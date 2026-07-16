@@ -8,12 +8,12 @@ async function readRawStdin(env = process.env, stdin = process.stdin) {
   const fromEnv = env.ADD_REASONING_TO_PRS_HOOK_INPUT;
   if (fromEnv && fromEnv.trim().length > 0) return fromEnv;
   if (stdin.isTTY) return "";
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     let data = "";
     stdin.setEncoding("utf8");
     stdin.on("data", (chunk) => data += chunk);
-    stdin.on("end", () => resolve(data));
-    stdin.on("error", () => resolve(data));
+    stdin.on("end", () => resolve2(data));
+    stdin.on("error", () => resolve2(data));
   });
 }
 
@@ -101,22 +101,81 @@ async function isDefaultBranch(cwd) {
   return current === "main" || current === "master";
 }
 
+// src/bodyFile.ts
+import { readFile, stat } from "node:fs/promises";
+import { isAbsolute, resolve } from "node:path";
+var FILE_FLAGS = /* @__PURE__ */ new Set(["--body-file", "--file", "-F"]);
+var MAX_BODY_FILE_BYTES = 1e6;
+function unquote(s) {
+  const t = s.trim();
+  if (t.length >= 2 && (t[0] === '"' && t[t.length - 1] === '"' || t[0] === "'" && t[t.length - 1] === "'")) {
+    return t.slice(1, -1);
+  }
+  return t;
+}
+function extractBodyFilePath(command) {
+  if (typeof command !== "string") return null;
+  const tokens = command.split(/\s+/).filter(Boolean);
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const eq = t.indexOf("=");
+    if (eq > 0) {
+      if (FILE_FLAGS.has(t.slice(0, eq))) {
+        const val = unquote(t.slice(eq + 1));
+        return val && val !== "-" ? val : null;
+      }
+      continue;
+    }
+    if (FILE_FLAGS.has(t)) {
+      const val = unquote(tokens[i + 1] ?? "");
+      return val && val !== "-" ? val : null;
+    }
+  }
+  return null;
+}
+async function readBodyFile(path, cwd) {
+  try {
+    const full = isAbsolute(path) ? path : resolve(cwd, path);
+    const s = await stat(full);
+    if (!s.isFile() || s.size > MAX_BODY_FILE_BYTES) return "";
+    return await readFile(full, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+// src/template.ts
+var PRIMITIVES = ["decisions", "assumptions", "tradeoffs", "limitations"];
+var HEADINGS = {
+  decisions: "Decisions",
+  assumptions: "Assumptions",
+  tradeoffs: "Trade-offs",
+  limitations: "Limitations"
+};
+function delimiters(surface) {
+  return surface === "pr" ? { open: PR_MARKER_OPEN, close: PR_MARKER_CLOSE } : { open: COMMIT_MARKER_OPEN, close: COMMIT_MARKER_CLOSE };
+}
+
 // src/guidance.ts
 function surfaceCopy(surface) {
-  if (surface === "pr") {
-    return {
-      open: PR_MARKER_OPEN,
-      close: PR_MARKER_CLOSE,
-      moment: "this pull request is opened",
-      where: "the pull request description (the --body / --body-file text)"
-    };
-  }
-  return {
-    open: COMMIT_MARKER_OPEN,
-    close: COMMIT_MARKER_CLOSE,
+  return surface === "pr" ? {
+    moment: "this pull request is opened",
+    where: "the pull request description (the --body / --body-file text)"
+  } : {
     moment: "this commit lands on the default branch",
     where: "the commit message body"
   };
+}
+function exampleBlock(surface) {
+  const { open, close } = delimiters(surface);
+  const isPr = surface === "pr";
+  const lines = [open];
+  for (const key of PRIMITIVES) {
+    lines.push(isPr ? `**${HEADINGS[key]}**` : `${HEADINGS[key]}:`);
+    lines.push("- <one concise line \u2014 omit this whole section if it does not apply>");
+  }
+  lines.push(close);
+  return lines.join("\n");
 }
 function buildGuidance(surface) {
   const c = surfaceCopy(surface);
@@ -134,14 +193,9 @@ Rules:
 - Grounded: every line must trace to real deliberation in this session. Cut anything padded, generic, or inferred.
 - If the session had no genuine decisions to record, that's fine \u2014 leave it out rather than manufacture filler.
 - Keep it tight: a few lines per section at most.
-- Wrap the block EXACTLY between these two markers so it is detected and left untouched on later runs:
+- Wrap the block EXACTLY between the two markers below so it is detected and left untouched on later runs:
 
-${c.open}
-Decisions:
-- <one concise line per decision>
-Trade-offs:
-- <...>
-${c.close}
+${exampleBlock(surface)}
 
 Then re-run your original command with the block included in ${c.where}.`;
 }
@@ -162,8 +216,13 @@ async function runHook(rawStdin, deps = {}) {
     if (typeof command !== "string" || command.trim().length === 0) return {};
     const kind = classifyCommand(command);
     if (kind === "other") return {};
-    if (hasMarker(command)) return {};
     const cwd = typeof rec.cwd === "string" && rec.cwd ? rec.cwd : deps.cwd ?? process.cwd();
+    if (hasMarker(command)) return {};
+    const bodyFilePath = extractBodyFilePath(command);
+    if (bodyFilePath) {
+      const contents = await readBodyFile(bodyFilePath, cwd);
+      if (hasMarker(contents)) return {};
+    }
     let surface;
     if (kind === "gh-pr-create") {
       surface = "pr";
