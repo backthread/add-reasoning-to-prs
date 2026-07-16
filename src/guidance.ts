@@ -7,7 +7,14 @@
 // aware (PR body vs commit message use different delimiters) and enumerates all four
 // primitives; the model includes only the sections that genuinely apply.
 
-import { renderBlock, type Surface } from './template.js';
+import {
+  renderBlock,
+  HEADINGS,
+  PRIMITIVES,
+  isEmptyBlock,
+  type Surface,
+  type WhyPrimitives,
+} from './template.js';
 import { SKIP_TOKEN } from './repoConfig.js';
 
 // Re-export so existing importers (hook.ts) keep a single import site for Surface.
@@ -42,14 +49,34 @@ function exampleBlock(surface: Surface): string {
   });
 }
 
+/** Render accumulated (earlier-session) primitives as a plain, readable list. */
+function renderAccumulated(p: WhyPrimitives): string {
+  const lines: string[] = [];
+  for (const key of PRIMITIVES) {
+    const items = (p[key] ?? []).filter(Boolean);
+    if (items.length === 0) continue;
+    lines.push(`${HEADINGS[key]}:`);
+    for (const it of items) lines.push(`- ${it}`);
+  }
+  return lines.join('\n');
+}
+
 /**
  * Build the guidance for a surface. The SAME text is used for both the
  * `permissionDecisionReason` (the reliable floor, honored on every Claude Code version)
  * and `additionalContext` (a progressive enhancement), so the model always sees it.
+ *
+ * When `accumulated` primitives are supplied (banked earlier on this branch, possibly by
+ * a different session), they're surfaced so the block can cover the WHOLE branch — the
+ * model folds the still-relevant ones in rather than pasting them verbatim.
  */
-export function buildGuidance(surface: Surface): string {
+export function buildGuidance(surface: Surface, accumulated?: WhyPrimitives): string {
   const c = surfaceCopy(surface);
-  return `add-reasoning-to-prs: before ${c.moment}, add a short, forward-only "why" block to ${c.where}, then re-run the command.
+  const earlier =
+    accumulated && !isEmptyBlock(accumulated)
+      ? `\n\nEarlier work on this branch (possibly a different session) already recorded these — fold the still-relevant points into the block instead of pasting them, and drop anything now stale:\n\n${renderAccumulated(accumulated)}\n`
+      : '';
+  return `add-reasoning-to-prs: before ${c.moment}, add a short, forward-only "why" block to ${c.where}, then re-run the command.${earlier}
 
 Compose the block ONLY from what you actually decided in THIS session — never invent. Include only the sections that genuinely apply, and drop any that don't:
 
@@ -72,4 +99,17 @@ Self-check BEFORE you write — a quick grounded pass, no tools or network neede
 - Whatever survives is the block. If NOTHING survives, there is no block to add: re-run your original command unchanged, or add ${SKIP_TOKEN} to it to opt out explicitly. Never manufacture filler to fill the template — an empty block is the correct outcome for a session that didn't deliberate.
 
 Otherwise, re-run your original command with the surviving block included in ${c.where}.`;
+}
+
+/**
+ * The best-effort nudge injected (as non-blocking additionalContext) on a feature-branch
+ * commit: bank this session's why to the branch scratchpad so the eventual PR — even one
+ * opened by a different session — can cover the whole branch.
+ */
+export function buildScratchNudge(): string {
+  return `add-reasoning-to-prs: you're committing on a feature branch, so this commit isn't touched. If this chunk of work involved a notable decision, assumption, trade-off, or limitation, bank it now — the eventual PR's why-block will fold it in, even if a different session opens the PR:
+
+  add-reasoning-to-prs scratch add --json '{"decisions":["..."],"tradeoffs":["..."]}'
+
+It's 100% local (nothing is committed) and stores only the why, never code. Skip it if there was nothing notable this time.`;
 }
