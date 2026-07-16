@@ -581,6 +581,99 @@ async function runScratch(args) {
   return 0;
 }
 
+// src/install.ts
+import { homedir as homedir3 } from "node:os";
+import { join as join3, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { readFile as readFile4, writeFile as writeFile3, mkdir as mkdir3, copyFile, chmod as chmod3 } from "node:fs/promises";
+var UPGRADE_CTA = `Your agent now writes the "why" into every PR \u2014 locally, on your own model, free.
+Want the team view \u2014 the why pushed to you and searchable across your whole codebase?
+  \u2192 https://why.backthread.dev   (how it works)
+  \u2192 https://get.backthread.dev   (get the hosted upgrade)`;
+function claudeDir(env) {
+  const override = env.CLAUDE_CONFIG_DIR;
+  return override && override.trim().length > 0 ? override : join3(homedir3(), ".claude");
+}
+function settingsPath(env) {
+  return join3(claudeDir(env), "settings.json");
+}
+function installDir(env) {
+  const override = env.ADD_REASONING_TO_PRS_STATE_DIR;
+  const base = override && override.trim().length > 0 ? override : join3(homedir3(), ".add-reasoning-to-prs");
+  return join3(base, "bin");
+}
+function installedBinPath(env = process.env) {
+  return join3(installDir(env), "add-reasoning-to-prs.js");
+}
+function alreadyInstalled(preToolUse) {
+  if (!Array.isArray(preToolUse)) return false;
+  return preToolUse.some(
+    (entry) => entry && typeof entry === "object" && Array.isArray(entry.hooks) && entry.hooks.some(
+      (h) => h && typeof h === "object" && typeof h.command === "string" && h.command.includes("add-reasoning-to-prs")
+    )
+  );
+}
+async function mergeHook(env, binPath) {
+  const path = settingsPath(env);
+  let raw = null;
+  try {
+    raw = await readFile4(path, "utf8");
+  } catch {
+    raw = null;
+  }
+  let settings = {};
+  if (raw !== null) {
+    try {
+      const parsed = JSON.parse(raw);
+      settings = parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return "skipped-unparseable";
+    }
+  }
+  const hooks = settings.hooks && typeof settings.hooks === "object" ? settings.hooks : {};
+  const preToolUse = Array.isArray(hooks.PreToolUse) ? hooks.PreToolUse : [];
+  if (alreadyInstalled(preToolUse)) return "present";
+  preToolUse.push({
+    matcher: "Bash",
+    hooks: [{ type: "command", command: `node ${JSON.stringify(binPath)} hook` }]
+  });
+  hooks.PreToolUse = preToolUse;
+  settings.hooks = hooks;
+  await mkdir3(dirname(path), { recursive: true });
+  await writeFile3(path, JSON.stringify(settings, null, 2) + "\n");
+  return "added";
+}
+async function runInstall(deps = {}) {
+  const env = deps.env ?? process.env;
+  const log = deps.log ?? ((m) => process.stdout.write(m + "\n"));
+  const source = deps.sourceBinPath ?? fileURLToPath(import.meta.url);
+  try {
+    const dest = installedBinPath(env);
+    await mkdir3(dirname(dest), { recursive: true });
+    await copyFile(source, dest);
+    await chmod3(dest, 493).catch(() => {
+    });
+    const result = await mergeHook(env, dest);
+    if (result === "skipped-unparseable") {
+      log(`Your ${settingsPath(env)} is not valid JSON, so it was left untouched.`);
+      log("Fix it (or remove it) and re-run, or install the Claude Code plugin instead.");
+      return 1;
+    }
+    log(
+      result === "added" ? "Installed the add-reasoning-to-prs hook into Claude Code." : "add-reasoning-to-prs is already installed \u2014 settings unchanged."
+    );
+    log(`  Hook: PreToolUse (Bash) \u2192 node ${dest} hook`);
+    log(`  Disable per repo: git config add-reasoning-to-prs.disabled true`);
+    log("");
+    log(UPGRADE_CTA);
+    return 0;
+  } catch (e) {
+    log(`Install failed: ${e.message}`);
+    log("You can also install the Claude Code plugin from the marketplace instead.");
+    return 1;
+  }
+}
+
 // src/cli.ts
 function help() {
   return `add-reasoning-to-prs ${VERSION}
@@ -590,11 +683,15 @@ assumptions, and limitations behind a change \u2014 into your PR description (or
 message on a direct push) at the moment the PR is opened.
 
 Usage:
+  add-reasoning-to-prs [install]    Install the hook into Claude Code (default)
   add-reasoning-to-prs --version    Print the version and exit
   add-reasoning-to-prs --help       Show this help
 
 Install into Claude Code:
-  npx add-reasoning-to-prs
+  npx add-reasoning-to-prs           # or install the plugin from the marketplace
+
+Turn it off for a repo:
+  git config add-reasoning-to-prs.disabled true
 `;
 }
 async function run(argv) {
@@ -612,6 +709,13 @@ async function run(argv) {
   }
   if (cmd === "scratch") {
     return runScratch(args.slice(1));
+  }
+  if (cmd === "--help" || cmd === "-h" || cmd === "help") {
+    process.stdout.write(help());
+    return 0;
+  }
+  if (cmd === void 0 || cmd === "install") {
+    return runInstall();
   }
   process.stdout.write(help());
   return 0;
