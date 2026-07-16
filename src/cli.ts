@@ -4,10 +4,12 @@
 // calling `run()` directly. The thin bin entrypoint (bin/add-reasoning-to-prs.ts) maps
 // its return value to a process exit code.
 //
-// v1 (scaffold) handles only --version / --help. Later work adds the `hook` subcommand
-// (the PreToolUse handler Claude Code invokes) and `install`.
+// Handles --version / --help and the `hook` subcommand (the PreToolUse handler Claude
+// Code invokes). `install` lands later.
 
 import { VERSION } from './version.js';
+import { readRawStdin } from './stdin.js';
+import { runHook } from './hook.js';
 
 export function help(): string {
   return `add-reasoning-to-prs ${VERSION}
@@ -36,6 +38,16 @@ export async function run(argv: string[]): Promise<number> {
 
   if (cmd === '--version' || cmd === '-v' || cmd === 'version') {
     process.stdout.write(VERSION + '\n');
+    return 0;
+  }
+
+  // The PreToolUse hook entrypoint: read the payload off stdin, print the decision JSON,
+  // and ALWAYS exit 0. runHook never throws (any error → `{}` = no injection), so this
+  // path can never block the user's git op.
+  if (cmd === 'hook') {
+    const raw = await readRawStdin();
+    const out = await runHook(raw);
+    process.stdout.write(JSON.stringify(out));
     return 0;
   }
 
