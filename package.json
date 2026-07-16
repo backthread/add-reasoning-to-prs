@@ -41,7 +41,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
     "start": "tsx src/bin/add-reasoning-to-prs.ts",
     "smoke": "npm run bundle && node dist-bundle/add-reasoning-to-prs.js --version > /dev/null",
-    "test": "node --import tsx --test --test-force-exit src/*.test.ts && npm run build && npm run smoke"
+    "test": "node --import tsx --test --test-force-exit src/*.test.ts && npm run build && npm run smoke",
+    "e2e": "npm run bundle && bash scripts/e2e.sh"
   },
   "engines": {
     "node": ">=22.18"
