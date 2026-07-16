@@ -1,0 +1,13 @@
+# Dependabot — propose bumps for the SHA-pinned GitHub Actions and the npm devDeps.
+# CI pins actions by commit SHA; Dependabot keeps those pins current (with the human-
+# readable version in the trailing comment) so security fixes don't go stale.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
