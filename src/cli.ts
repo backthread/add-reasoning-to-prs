@@ -10,6 +10,7 @@
 import { VERSION } from './version.js';
 import { readRawStdin } from './stdin.js';
 import { runHook } from './hook.js';
+import { runScratch } from './scratchCommand.js';
 
 export function help(): string {
   return `add-reasoning-to-prs ${VERSION}
@@ -49,6 +50,12 @@ export async function run(argv: string[]): Promise<number> {
     const out = await runHook(raw);
     process.stdout.write(JSON.stringify(out));
     return 0;
+  }
+
+  // Bank / show / clear the per-branch scratchpad (used to carry the "why" across
+  // sessions on a branch until the PR is opened).
+  if (cmd === 'scratch') {
+    return runScratch(args.slice(1));
   }
 
   // Default (no args) and explicit help both print usage.
