@@ -1,0 +1,55 @@
+{
+  "name": "add-reasoning-to-prs",
+  "version": "0.1.0",
+  "description": "A Claude Code hook that writes a forward-only \"why\" block (decisions, trade-offs, assumptions, limitations) into your PR description or commit message at PR-create / direct-push time.",
+  "license": "MIT",
+  "author": "Backthread",
+  "homepage": "https://backthread.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/backthread/add-reasoning-to-prs.git"
+  },
+  "bugs": "https://github.com/backthread/add-reasoning-to-prs/issues",
+  "keywords": [
+    "claude-code",
+    "claude",
+    "hook",
+    "pull-request",
+    "pr-description",
+    "commit-message",
+    "decision-log",
+    "ai-coding-agent",
+    "developer-tools",
+    "cli"
+  ],
+  "type": "module",
+  "comment": "PUBLISHED BIN = the self-contained esbuild bundle (dist-bundle/add-reasoning-to-prs.js), committed to git. The Claude Code plugin references it via ${CLAUDE_PLUGIN_ROOT} and CC runs no build step on install, so the bundle must be tracked. It has ZERO runtime dependencies (the why-block is composed by the live agent in-session; the hook itself is pure Node), so `npx add-reasoning-to-prs` stays fast and install-free.",
+  "bin": {
+    "add-reasoning-to-prs": "./dist-bundle/add-reasoning-to-prs.js"
+  },
+  "files": [
+    "dist-bundle",
+    "hooks",
+    ".claude-plugin",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "bundle": "node esbuild.config.mjs",
+    "prepack": "npm run build && npm run bundle",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "start": "tsx src/bin/add-reasoning-to-prs.ts",
+    "smoke": "npm run bundle && node dist-bundle/add-reasoning-to-prs.js --version > /dev/null",
+    "test": "node --import tsx --test --test-force-exit src/*.test.ts && npm run build && npm run smoke"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "esbuild": "^0.28.0",
+    "tsx": "^4.22.3",
+    "typescript": "^5.6.2"
+  }
+}
