@@ -43,6 +43,11 @@ jobs:
       # differs from what's committed (esbuild is deterministic for the pinned version).
       - name: Committed bundle is in sync with src
         run: git diff --exit-code dist-bundle/add-reasoning-to-prs.js
+      # End-to-end dogfood gate: drive the built bundle through every path (PR + direct-push
+      # surfaces, idempotency, empty/anti-loop cap, off-switch, skip, scratchpad, fail-open,
+      # never-hard-blocks) against a throwaway git repo.
+      - name: E2E dogfood validation
+        run: npm run e2e
       # Regression guard: every release workflow must keep npm build provenance on, so
       # each published package always carries a verifiable, tamper-evident attestation.
       - name: Releases keep npm provenance on
