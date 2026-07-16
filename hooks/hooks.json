@@ -1,0 +1,17 @@
+{
+  "$comment": "The PreToolUse/Bash hook, declared in the plugin so it registers automatically at user/global scope when the plugin is installed — no mutation of the user's project .claude/settings.json, and it follows the user across every repo and git worktree. The command runs the plugin's BUNDLED, self-contained bin via ${CLAUDE_PLUGIN_ROOT} (dist-bundle/add-reasoning-to-prs.js — committed to git, since Claude Code runs no build step on install), NOT `npx`, which would resolve a possibly-stale or absent global install.",
+  "$comment_behavior": "SYNCHRONOUS (Claude Code reads this command's STDOUT for the decision) and FAIL-OPEN: when the Bash command is a `git commit` on the default branch or a `gh pr create` that lacks a why-block, the bin denies with a reason + injected guidance so the live model composes the block and re-runs; every other command — and every error — yields an empty `{}` and exit 0, so the git op always proceeds. It never exits 2 and never hard-blocks.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/dist-bundle/add-reasoning-to-prs.js\" hook"
+          }
+        ]
+      }
+    ]
+  }
+}
