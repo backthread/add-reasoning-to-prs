@@ -93,12 +93,12 @@ async function defaultBranch(cwd) {
   if (head) return head.replace(/^origin\//, "");
   return null;
 }
-async function isDefaultBranch(cwd) {
+async function branchInfo(cwd) {
   const current = await currentBranch(cwd);
-  if (!current) return false;
+  if (!current) return { current: null, isDefault: false };
   const def = await defaultBranch(cwd);
-  if (def) return current === def;
-  return current === "main" || current === "master";
+  const isDefault = def ? current === def : current === "main" || current === "master";
+  return { current, isDefault };
 }
 
 // src/bodyFile.ts
@@ -161,6 +161,82 @@ async function readBodyFile(path, cwd) {
     return await readFile(full, "utf8");
   } catch {
     return "";
+  }
+}
+
+// src/repoConfig.ts
+import { execFile as execFile2 } from "node:child_process";
+import { promisify as promisify2 } from "node:util";
+var pexec2 = promisify2(execFile2);
+var SKIP_TOKEN = "[skip-why]";
+function envTrue(v) {
+  if (typeof v !== "string") return false;
+  const s = v.trim().toLowerCase();
+  return s === "1" || s === "true" || s === "yes" || s === "on";
+}
+async function isDisabled(cwd, env = process.env) {
+  if (envTrue(env.ADD_REASONING_TO_PRS_DISABLE)) return true;
+  try {
+    const { stdout } = await pexec2(
+      "git",
+      ["config", "--get", "add-reasoning-to-prs.disabled"],
+      { cwd, timeout: 3e3, windowsHide: true }
+    );
+    return envTrue(stdout);
+  } catch {
+    return false;
+  }
+}
+function isSkipped(command, env = process.env) {
+  if (envTrue(env.ADD_REASONING_TO_PRS_SKIP)) return true;
+  return typeof command === "string" && command.includes(SKIP_TOKEN);
+}
+
+// src/promptState.ts
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { readFile as readFile2, writeFile, mkdir, chmod } from "node:fs/promises";
+var DIR_MODE = 448;
+var FILE_MODE = 384;
+var MAX_KEYS = 500;
+function stateDir(env = process.env) {
+  const override = env.ADD_REASONING_TO_PRS_STATE_DIR;
+  return override && override.trim().length > 0 ? override : join(homedir(), ".add-reasoning-to-prs");
+}
+function statePath(env) {
+  return join(stateDir(env), "prompted");
+}
+function promptKey(sessionId, surface, branch) {
+  return `${sessionId ?? "no-session"}::${surface}::${branch ?? "no-branch"}`;
+}
+async function hasPrompted(key, env = process.env) {
+  try {
+    const raw = await readFile2(statePath(env), "utf8");
+    return raw.split("\n").some((line) => line.trim() === key);
+  } catch (e) {
+    return e?.code === "ENOENT" ? false : true;
+  }
+}
+async function markPrompted(key, env = process.env) {
+  try {
+    const dir = stateDir(env);
+    await mkdir(dir, { recursive: true, mode: DIR_MODE });
+    let keys = [];
+    try {
+      const raw = await readFile2(statePath(env), "utf8");
+      keys = raw.split("\n").map((s) => s.trim()).filter(Boolean);
+    } catch {
+    }
+    if (keys.includes(key)) return true;
+    keys.push(key);
+    if (keys.length > MAX_KEYS) keys = keys.slice(keys.length - MAX_KEYS);
+    const path = statePath(env);
+    await writeFile(path, keys.join("\n") + "\n", { mode: FILE_MODE });
+    await chmod(path, FILE_MODE).catch(() => {
+    });
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -242,7 +318,22 @@ Then re-run your original command with the block included in ${c.where}.`;
 }
 
 // src/hook.ts
+function deny(surface) {
+  const guidance = buildGuidance(surface);
+  return {
+    hookSpecificOutput: {
+      hookEventName: "PreToolUse",
+      permissionDecision: "deny",
+      permissionDecisionReason: guidance,
+      // Progressive enhancement. Claude Code exposes no version signal to hooks, so we
+      // always emit additionalContext too: newer versions surface it, older ones ignore
+      // the unknown field, and the reason above carries the guidance either way.
+      additionalContext: guidance
+    }
+  };
+}
 async function runHook(rawStdin, deps = {}) {
+  const env = deps.env ?? process.env;
   try {
     let payload;
     try {
@@ -257,33 +348,28 @@ async function runHook(rawStdin, deps = {}) {
     if (typeof command !== "string" || command.trim().length === 0) return {};
     const kind = classifyCommand(command);
     if (kind === "other") return {};
+    if (isSkipped(command, env)) return {};
     const cwd = typeof rec.cwd === "string" && rec.cwd ? rec.cwd : deps.cwd ?? process.cwd();
     if (hasMarker(command)) return {};
     const bodyFilePath = extractBodyFilePath(command);
-    if (bodyFilePath) {
-      const contents = await readBodyFile(bodyFilePath, cwd);
-      if (hasMarker(contents)) return {};
-    }
+    if (bodyFilePath && hasMarker(await readBodyFile(bodyFilePath, cwd))) return {};
+    if (await (deps.isDisabledImpl ?? isDisabled)(cwd, env)) return {};
+    const info = await (deps.branchInfoImpl ?? branchInfo)(cwd).catch(() => ({
+      current: null,
+      isDefault: false
+    }));
     let surface;
     if (kind === "gh-pr-create") {
       surface = "pr";
     } else {
-      const onDefault = await (deps.isDefaultBranchImpl ?? isDefaultBranch)(cwd).catch(() => false);
-      if (!onDefault) return {};
+      if (!info.isDefault) return {};
       surface = "commit";
     }
-    const guidance = buildGuidance(surface);
-    return {
-      hookSpecificOutput: {
-        hookEventName: "PreToolUse",
-        permissionDecision: "deny",
-        permissionDecisionReason: guidance,
-        // Progressive enhancement. Claude Code exposes no version signal to hooks, so we
-        // always emit additionalContext too: newer versions surface it, older ones ignore
-        // the unknown field, and the reason above carries the guidance either way.
-        additionalContext: guidance
-      }
-    };
+    const sessionId = typeof rec.session_id === "string" ? rec.session_id : void 0;
+    const key = promptKey(sessionId, surface, info.current);
+    if (await hasPrompted(key, env)) return {};
+    if (!await markPrompted(key, env)) return {};
+    return deny(surface);
   } catch {
     return {};
   }
