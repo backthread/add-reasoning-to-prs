@@ -4,39 +4,41 @@
 // This text is what the LIVE model reads on the denial and acts on: it composes the
 // forward-only block from the session's real deliberation and re-runs the command. The
 // hook itself never authors the block — it only asks for it. The guidance is surface-
-// aware (PR body vs commit message use different delimiters).
+// aware (PR body vs commit message use different delimiters) and enumerates all four
+// primitives; the model includes only the sections that genuinely apply.
 
-import {
-  PR_MARKER_OPEN,
-  PR_MARKER_CLOSE,
-  COMMIT_MARKER_OPEN,
-  COMMIT_MARKER_CLOSE,
-} from './marker.js';
+import { renderBlock, type Surface } from './template.js';
 
-export type Surface = 'pr' | 'commit';
+// Re-export so existing importers (hook.ts) keep a single import site for Surface.
+export type { Surface } from './template.js';
 
 interface SurfaceCopy {
-  open: string;
-  close: string;
   moment: string;
   where: string;
 }
 
 function surfaceCopy(surface: Surface): SurfaceCopy {
-  if (surface === 'pr') {
-    return {
-      open: PR_MARKER_OPEN,
-      close: PR_MARKER_CLOSE,
-      moment: 'this pull request is opened',
-      where: 'the pull request description (the --body / --body-file text)',
-    };
-  }
-  return {
-    open: COMMIT_MARKER_OPEN,
-    close: COMMIT_MARKER_CLOSE,
-    moment: 'this commit lands on the default branch',
-    where: 'the commit message body',
-  };
+  return surface === 'pr'
+    ? {
+        moment: 'this pull request is opened',
+        where: 'the pull request description (the --body / --body-file text)',
+      }
+    : {
+        moment: 'this commit lands on the default branch',
+        where: 'the commit message body',
+      };
+}
+
+/** A filled-in-shape example of the block for a surface, rendered from the canonical
+ * template so the guidance can never drift from what the block actually looks like. */
+function exampleBlock(surface: Surface): string {
+  const placeholder = ['<one concise line — omit this whole section if it does not apply>'];
+  return renderBlock(surface, {
+    decisions: placeholder,
+    assumptions: placeholder,
+    tradeoffs: placeholder,
+    limitations: placeholder,
+  });
 }
 
 /**
@@ -60,14 +62,9 @@ Rules:
 - Grounded: every line must trace to real deliberation in this session. Cut anything padded, generic, or inferred.
 - If the session had no genuine decisions to record, that's fine — leave it out rather than manufacture filler.
 - Keep it tight: a few lines per section at most.
-- Wrap the block EXACTLY between these two markers so it is detected and left untouched on later runs:
+- Wrap the block EXACTLY between the two markers below so it is detected and left untouched on later runs:
 
-${c.open}
-Decisions:
-- <one concise line per decision>
-Trade-offs:
-- <...>
-${c.close}
+${exampleBlock(surface)}
 
 Then re-run your original command with the block included in ${c.where}.`;
 }

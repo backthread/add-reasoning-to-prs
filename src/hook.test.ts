@@ -1,5 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtemp, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { runHook } from './hook.js';
 import { PR_MARKER_OPEN, PR_MARKER_CLOSE } from './marker.js';
 
@@ -35,6 +38,28 @@ test('gh pr create that ALREADY has the block → no-op (idempotent)', async () 
   const cmd = `gh pr create --body "Body ${PR_MARKER_OPEN} Decisions: x ${PR_MARKER_CLOSE}"`;
   const out = await runHook(payload(cmd), onFeature);
   assert.deepEqual(out, {});
+});
+
+test('idempotent when the block lives in a --body-file, not inline', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'arp-hook-'));
+  const withBlock = join(dir, 'body.md');
+  await writeFile(withBlock, `Summary\n${PR_MARKER_OPEN}\nDecisions:\n- x\n${PR_MARKER_CLOSE}\n`);
+  const out = await runHook(
+    payload(`gh pr create --body-file ${withBlock}`, { cwd: dir }),
+    onFeature,
+  );
+  assert.deepEqual(out, {}, 'a file-passed body with a block should be left alone');
+});
+
+test('still denies when the --body-file exists but has NO block', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'arp-hook-'));
+  const noBlock = join(dir, 'body.md');
+  await writeFile(noBlock, 'Just a summary, no reasoning.\n');
+  const out = await runHook(
+    payload(`gh pr create --body-file ${noBlock}`, { cwd: dir }),
+    onFeature,
+  );
+  assert.equal(out.hookSpecificOutput?.permissionDecision, 'deny');
 });
 
 test('git commit on the DEFAULT branch → deny with the commit-surface guidance', async () => {

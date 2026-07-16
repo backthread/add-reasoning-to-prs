@@ -13,6 +13,7 @@
 import { classifyCommand } from './command.js';
 import { hasMarker } from './marker.js';
 import { isDefaultBranch } from './git.js';
+import { extractBodyFilePath, readBodyFile } from './bodyFile.js';
 import { buildGuidance, type Surface } from './guidance.js';
 
 /** The PreToolUse hook output. `{}` = no injection (fail-open); otherwise a deny. */
@@ -59,11 +60,18 @@ export async function runHook(rawStdin: string, deps: HookDeps = {}): Promise<Pr
     const kind = classifyCommand(command);
     if (kind === 'other') return {};
 
+    const cwd = typeof rec.cwd === 'string' && rec.cwd ? rec.cwd : (deps.cwd ?? process.cwd());
+
     // Idempotency: the command already carries a block (the model's own retry, or a
     // hand-written one) → leave it alone, so a re-run is a no-op and we never re-deny.
+    // This covers the inline body (--body / -m) AND a body/message passed via a file
+    // (--body-file / -F / --file) — we read that file and check it too.
     if (hasMarker(command)) return {};
-
-    const cwd = typeof rec.cwd === 'string' && rec.cwd ? rec.cwd : (deps.cwd ?? process.cwd());
+    const bodyFilePath = extractBodyFilePath(command);
+    if (bodyFilePath) {
+      const contents = await readBodyFile(bodyFilePath, cwd);
+      if (hasMarker(contents)) return {};
+    }
 
     // Surface routing: `gh pr create` → the PR body. A `git commit` only gets a block on
     // the DEFAULT branch (the direct-push surface); a feature-branch commit defers to
