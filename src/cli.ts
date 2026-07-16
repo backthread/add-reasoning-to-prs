@@ -11,6 +11,7 @@ import { VERSION } from './version.js';
 import { readRawStdin } from './stdin.js';
 import { runHook } from './hook.js';
 import { runScratch } from './scratchCommand.js';
+import { runInstall } from './install.js';
 
 export function help(): string {
   return `add-reasoning-to-prs ${VERSION}
@@ -20,11 +21,15 @@ assumptions, and limitations behind a change — into your PR description (or yo
 message on a direct push) at the moment the PR is opened.
 
 Usage:
+  add-reasoning-to-prs [install]    Install the hook into Claude Code (default)
   add-reasoning-to-prs --version    Print the version and exit
   add-reasoning-to-prs --help       Show this help
 
 Install into Claude Code:
-  npx add-reasoning-to-prs
+  npx add-reasoning-to-prs           # or install the plugin from the marketplace
+
+Turn it off for a repo:
+  git config add-reasoning-to-prs.disabled true
 `;
 }
 
@@ -58,7 +63,18 @@ export async function run(argv: string[]): Promise<number> {
     return runScratch(args.slice(1));
   }
 
-  // Default (no args) and explicit help both print usage.
+  if (cmd === '--help' || cmd === '-h' || cmd === 'help') {
+    process.stdout.write(help());
+    return 0;
+  }
+
+  // The bare `npx add-reasoning-to-prs` (or an explicit `install`) installs the hook —
+  // this is the advertised one-command install.
+  if (cmd === undefined || cmd === 'install') {
+    return runInstall();
+  }
+
+  // Anything unrecognized → help.
   process.stdout.write(help());
   return 0;
 }

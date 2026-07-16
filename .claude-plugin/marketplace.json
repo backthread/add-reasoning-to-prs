@@ -1,0 +1,18 @@
+{
+  "name": "add-reasoning-to-prs",
+  "owner": {
+    "name": "Backthread",
+    "url": "https://backthread.dev"
+  },
+  "description": "A Claude Code hook that writes a forward-only \"why\" block into your PR description or commit message.",
+  "plugins": [
+    {
+      "name": "add-reasoning-to-prs",
+      "source": "./",
+      "description": "Writes a forward-only \"why\" block (decisions, trade-offs, assumptions, limitations) into your PR description or commit message at PR-create / direct-push time — composed by your own agent, in-session, with no account and no server round-trip.",
+      "homepage": "https://backthread.dev",
+      "license": "MIT",
+      "keywords": ["claude-code", "pull-request", "commit-message", "decision-log", "documentation"]
+    }
+  ]
+}
