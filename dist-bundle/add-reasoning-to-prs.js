@@ -88,6 +88,9 @@ async function git(args, cwd) {
 async function currentBranch(cwd) {
   return git(["symbolic-ref", "--quiet", "--short", "HEAD"], cwd);
 }
+async function repoRoot(cwd) {
+  return git(["rev-parse", "--show-toplevel"], cwd);
+}
 async function defaultBranch(cwd) {
   const head = await git(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"], cwd);
   if (head) return head.replace(/^origin\//, "");
@@ -240,6 +243,54 @@ async function markPrompted(key, env = process.env) {
   }
 }
 
+// src/scratch.ts
+import { createHash } from "node:crypto";
+import { homedir as homedir2 } from "node:os";
+import { join as join2 } from "node:path";
+import { readFile as readFile3, writeFile as writeFile2, mkdir as mkdir2, rm, chmod as chmod2 } from "node:fs/promises";
+
+// src/critique.ts
+var FILLER_PATTERNS = [
+  /^(n\/?a|none|nil|tbd|todo|-{1,}|\.{1,})$/i,
+  // One or more filler adjectives ("various", "minor", …) + a filler noun, whole-line.
+  /^((various|minor|misc\.?|miscellaneous|small|some|general|other)\s+)+(changes?|improvements?|updates?|fixes|tweaks|edits|stuff|things)\.?$/i,
+  /^(general\s+|misc\.?\s+)?clean(ed)?[\s-]*up\.?$/i,
+  /^improve[sd]?\s+(the\s+)?code\s+quality\.?$/i,
+  /^(made|make)\s+(the\s+)?code\s+(better|cleaner|nicer)\.?$/i,
+  /^(better|cleaner|improved)\s+code\.?$/i,
+  /^(code\s+)?(quality|cleanup|refactor(ing)?|polish)\.?$/i,
+  /^no\s+(notable\s+)?(decisions?|changes?|deliberation)\.?$/i
+];
+function debullet(line) {
+  return line.replace(/^\s*[-*]\s*/, "").trim();
+}
+function isPadding(line) {
+  const t = debullet(line);
+  if (t.length === 0) return true;
+  return FILLER_PATTERNS.some((re) => re.test(t));
+}
+function scrubLines(lines) {
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const raw of Array.isArray(lines) ? lines : []) {
+    if (typeof raw !== "string") continue;
+    if (isPadding(raw)) continue;
+    const key = debullet(raw).toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(debullet(raw));
+  }
+  return out;
+}
+function scrubPrimitives(p) {
+  return {
+    decisions: scrubLines(p.decisions ?? []),
+    assumptions: scrubLines(p.assumptions ?? []),
+    tradeoffs: scrubLines(p.tradeoffs ?? []),
+    limitations: scrubLines(p.limitations ?? [])
+  };
+}
+
 // src/template.ts
 var PRIMITIVES = ["decisions", "assumptions", "tradeoffs", "limitations"];
 var HEADINGS = {
@@ -275,6 +326,68 @@ function renderBlock(surface, p) {
   return lines.join("\n");
 }
 
+// src/scratch.ts
+var DIR_MODE2 = 448;
+var FILE_MODE2 = 384;
+function scratchDir(env = process.env) {
+  const override = env.ADD_REASONING_TO_PRS_STATE_DIR;
+  const base = override && override.trim().length > 0 ? override : join2(homedir2(), ".add-reasoning-to-prs");
+  return join2(base, "scratch");
+}
+function scratchPath(repoRoot2, branch, env) {
+  const key = createHash("sha256").update(`${repoRoot2}
+${branch}`).digest("hex").slice(0, 32);
+  return join2(scratchDir(env), `${key}.json`);
+}
+function coercePrimitives(obj) {
+  const out = {};
+  if (!obj || typeof obj !== "object") return out;
+  const rec = obj;
+  for (const key of PRIMITIVES) {
+    const v = rec[key];
+    if (Array.isArray(v)) {
+      const items = v.filter((s) => typeof s === "string");
+      if (items.length) out[key] = items;
+    }
+  }
+  return out;
+}
+function merge(a, b) {
+  const out = {};
+  for (const key of PRIMITIVES) out[key] = [...a[key] ?? [], ...b[key] ?? []];
+  return scrubPrimitives(out);
+}
+async function readScratch(repoRoot2, branch, env = process.env) {
+  try {
+    const raw = await readFile3(scratchPath(repoRoot2, branch, env), "utf8");
+    return scrubPrimitives(coercePrimitives(JSON.parse(raw)));
+  } catch {
+    return {};
+  }
+}
+async function appendScratch(repoRoot2, branch, add, env = process.env) {
+  const merged = merge(await readScratch(repoRoot2, branch, env), add);
+  try {
+    const dir = scratchDir(env);
+    await mkdir2(dir, { recursive: true, mode: DIR_MODE2 });
+    const path = scratchPath(repoRoot2, branch, env);
+    await writeFile2(path, JSON.stringify(merged) + "\n", { mode: FILE_MODE2 });
+    await chmod2(path, FILE_MODE2).catch(() => {
+    });
+  } catch {
+  }
+  return merged;
+}
+async function clearScratch(repoRoot2, branch, env = process.env) {
+  try {
+    await rm(scratchPath(repoRoot2, branch, env), { force: true });
+  } catch {
+  }
+}
+function isScratchEmpty(p) {
+  return isEmptyBlock(p);
+}
+
 // src/guidance.ts
 function surfaceCopy(surface) {
   return surface === "pr" ? {
@@ -294,9 +407,25 @@ function exampleBlock(surface) {
     limitations: placeholder
   });
 }
-function buildGuidance(surface) {
+function renderAccumulated(p) {
+  const lines = [];
+  for (const key of PRIMITIVES) {
+    const items = (p[key] ?? []).filter(Boolean);
+    if (items.length === 0) continue;
+    lines.push(`${HEADINGS[key]}:`);
+    for (const it of items) lines.push(`- ${it}`);
+  }
+  return lines.join("\n");
+}
+function buildGuidance(surface, accumulated) {
   const c = surfaceCopy(surface);
-  return `add-reasoning-to-prs: before ${c.moment}, add a short, forward-only "why" block to ${c.where}, then re-run the command.
+  const earlier = accumulated && !isEmptyBlock(accumulated) ? `
+
+Earlier work on this branch (possibly a different session) already recorded these \u2014 fold the still-relevant points into the block instead of pasting them, and drop anything now stale:
+
+${renderAccumulated(accumulated)}
+` : "";
+  return `add-reasoning-to-prs: before ${c.moment}, add a short, forward-only "why" block to ${c.where}, then re-run the command.${earlier}
 
 Compose the block ONLY from what you actually decided in THIS session \u2014 never invent. Include only the sections that genuinely apply, and drop any that don't:
 
@@ -320,10 +449,17 @@ Self-check BEFORE you write \u2014 a quick grounded pass, no tools or network ne
 
 Otherwise, re-run your original command with the surviving block included in ${c.where}.`;
 }
+function buildScratchNudge() {
+  return `add-reasoning-to-prs: you're committing on a feature branch, so this commit isn't touched. If this chunk of work involved a notable decision, assumption, trade-off, or limitation, bank it now \u2014 the eventual PR's why-block will fold it in, even if a different session opens the PR:
+
+  add-reasoning-to-prs scratch add --json '{"decisions":["..."],"tradeoffs":["..."]}'
+
+It's 100% local (nothing is committed) and stores only the why, never code. Skip it if there was nothing notable this time.`;
+}
 
 // src/hook.ts
-function deny(surface) {
-  const guidance = buildGuidance(surface);
+function deny(surface, accumulated) {
+  const guidance = buildGuidance(surface, accumulated);
   return {
     hookSpecificOutput: {
       hookEventName: "PreToolUse",
@@ -335,6 +471,9 @@ function deny(surface) {
       additionalContext: guidance
     }
   };
+}
+function nudge(context) {
+  return { hookSpecificOutput: { hookEventName: "PreToolUse", additionalContext: context } };
 }
 async function runHook(rawStdin, deps = {}) {
   const env = deps.env ?? process.env;
@@ -354,6 +493,7 @@ async function runHook(rawStdin, deps = {}) {
     if (kind === "other") return {};
     if (isSkipped(command, env)) return {};
     const cwd = typeof rec.cwd === "string" && rec.cwd ? rec.cwd : deps.cwd ?? process.cwd();
+    const sessionId = typeof rec.session_id === "string" ? rec.session_id : void 0;
     if (hasMarker(command)) return {};
     const bodyFilePath = extractBodyFilePath(command);
     if (bodyFilePath && hasMarker(await readBodyFile(bodyFilePath, cwd))) return {};
@@ -366,17 +506,79 @@ async function runHook(rawStdin, deps = {}) {
     if (kind === "gh-pr-create") {
       surface = "pr";
     } else {
-      if (!info.isDefault) return {};
+      if (!info.isDefault) {
+        if (info.current) {
+          const nudgeKey = promptKey(sessionId, "scratch-nudge", info.current);
+          if (!await hasPrompted(nudgeKey, env) && await markPrompted(nudgeKey, env)) {
+            return nudge(buildScratchNudge());
+          }
+        }
+        return {};
+      }
       surface = "commit";
     }
-    const sessionId = typeof rec.session_id === "string" ? rec.session_id : void 0;
     const key = promptKey(sessionId, surface, info.current);
     if (await hasPrompted(key, env)) return {};
     if (!await markPrompted(key, env)) return {};
-    return deny(surface);
+    let accumulated;
+    if (surface === "pr" && info.current) {
+      const root = await (deps.repoRootImpl ?? repoRoot)(cwd).catch(() => null);
+      if (root) {
+        const scratch = await readScratch(root, info.current, env);
+        if (!isScratchEmpty(scratch)) accumulated = scratch;
+        await clearScratch(root, info.current, env);
+      }
+    }
+    return deny(surface, accumulated);
   } catch {
     return {};
   }
+}
+
+// src/scratchCommand.ts
+function getFlag(args, name) {
+  const idx = args.indexOf(name);
+  if (idx >= 0 && idx + 1 < args.length) return args[idx + 1];
+  const prefix = `${name}=`;
+  const eq = args.find((a) => a.startsWith(prefix));
+  return eq ? eq.slice(prefix.length) : void 0;
+}
+async function runScratch(args) {
+  const sub = args[0];
+  const cwd = process.cwd();
+  const [root, branch] = await Promise.all([repoRoot(cwd), currentBranch(cwd)]);
+  if (sub === "add") {
+    if (!root || !branch) {
+      process.stderr.write("add-reasoning-to-prs: not in a git repo (or detached HEAD) \u2014 nothing banked.\n");
+      return 0;
+    }
+    const raw = getFlag(args, "--json") ?? await readRawStdin();
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      process.stderr.write(
+        `add-reasoning-to-prs: scratch add expects JSON \u2014 --json '{"decisions":["..."]}' or piped on stdin.
+`
+      );
+      return 0;
+    }
+    const merged = await appendScratch(root, branch, coercePrimitives(parsed));
+    process.stdout.write(JSON.stringify(merged) + "\n");
+    return 0;
+  }
+  if (sub === "show") {
+    const scratch = root && branch ? await readScratch(root, branch) : {};
+    process.stdout.write(JSON.stringify(scratch) + "\n");
+    return 0;
+  }
+  if (sub === "clear") {
+    if (root && branch) await clearScratch(root, branch);
+    process.stdout.write("cleared\n");
+    return 0;
+  }
+  process.stderr.write("usage: add-reasoning-to-prs scratch <add|show|clear>\n");
+  return 0;
 }
 
 // src/cli.ts
@@ -407,6 +609,9 @@ async function run(argv) {
     const out = await runHook(raw);
     process.stdout.write(JSON.stringify(out));
     return 0;
+  }
+  if (cmd === "scratch") {
+    return runScratch(args.slice(1));
   }
   process.stdout.write(help());
   return 0;

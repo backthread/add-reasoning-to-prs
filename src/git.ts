@@ -25,6 +25,12 @@ export async function currentBranch(cwd: string): Promise<string | null> {
   return git(['symbolic-ref', '--quiet', '--short', 'HEAD'], cwd);
 }
 
+/** The absolute repo root (git toplevel), or null on error / non-repo. Used to key the
+ * per-branch scratchpad so it's scoped to this repo (and distinct across worktrees). */
+export async function repoRoot(cwd: string): Promise<string | null> {
+  return git(['rev-parse', '--show-toplevel'], cwd);
+}
+
 /**
  * The repo's default branch name, best-effort and OFFLINE:
  *   1. the local `origin/HEAD` symbolic ref (set by clone / `git remote set-head`), else

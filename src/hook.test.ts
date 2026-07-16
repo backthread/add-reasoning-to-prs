@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runHook, type HookDeps } from './hook.js';
 import { PR_MARKER_OPEN, PR_MARKER_CLOSE } from './marker.js';
+import { appendScratch, readScratch, isScratchEmpty } from './scratch.js';
 
 /** Build a PreToolUse/Bash payload string. */
 function payload(command: string, extra: Record<string, unknown> = {}): string {
@@ -41,6 +42,7 @@ test('gh pr create without a block → deny with guidance (both channels)', asyn
   assert.ok(hs, 'expected a hookSpecificOutput');
   assert.equal(hs.hookEventName, 'PreToolUse');
   assert.equal(hs.permissionDecision, 'deny');
+  assert.ok(hs.permissionDecisionReason);
   assert.match(hs.permissionDecisionReason, /forward-only/i);
   assert.match(hs.permissionDecisionReason, /pull request description/i);
   assert.equal(hs.additionalContext, hs.permissionDecisionReason);
@@ -70,11 +72,13 @@ test('still denies when the --body-file exists but has NO block', async () => {
 test('git commit on the DEFAULT branch → deny with the commit-surface guidance', async () => {
   const out = await runHook(payload('git commit -m "wip"'), await mkDeps(AS_DEFAULT));
   assert.equal(out.hookSpecificOutput?.permissionDecision, 'deny');
-  assert.match(out.hookSpecificOutput!.permissionDecisionReason, /commit message body/i);
+  assert.match(out.hookSpecificOutput?.permissionDecisionReason ?? '', /commit message body/i);
 });
 
-test('git commit on a FEATURE branch → no-op (defers to PR-create)', async () => {
-  assert.deepEqual(await runHook(payload('git commit -m "wip"'), await mkDeps(AS_FEATURE)), {});
+test('git commit on a FEATURE branch never denies (defers to PR-create)', async () => {
+  // It may emit a non-blocking bank nudge, but it must never deny the commit.
+  const out = await runHook(payload('git commit -m "wip"'), await mkDeps(AS_FEATURE));
+  assert.notEqual(out.hookSpecificOutput?.permissionDecision, 'deny');
 });
 
 test('non-matching command / non-Bash tool → no-op', async () => {
@@ -138,6 +142,40 @@ test('deny cap: the same operation is denied at most once (empty-retry does not 
   // The model finds nothing to add and re-runs the SAME command with no block:
   const second = await runHook(payload('gh pr create --title T'), deps);
   assert.deepEqual(second, {}, 'second time is capped → allow (no loop)');
+});
+
+// --- multi-session scratchpad -----------------------------------------------------
+
+test('feature-branch commit: nudges once per session to bank the why (non-blocking)', async () => {
+  const deps = await mkDeps(AS_FEATURE);
+  const first = await runHook(payload('git commit -m wip'), deps);
+  // A non-blocking context nudge — additionalContext but NO permissionDecision.
+  assert.equal(first.hookSpecificOutput?.permissionDecision, undefined);
+  assert.match(first.hookSpecificOutput?.additionalContext ?? '', /scratch add/);
+  // Second commit in the same session: already nudged → silent no-op.
+  const second = await runHook(payload('git commit -m more'), deps);
+  assert.deepEqual(second, {});
+});
+
+test('PR-create folds the accumulated scratchpad into the guidance, then clears it', async () => {
+  const stateDir = await mkdtemp(join(tmpdir(), 'arp-state-'));
+  const env = { ADD_REASONING_TO_PRS_STATE_DIR: stateDir };
+  const root = '/repo';
+  const branch = 'feat/multi';
+  // An earlier session banked a decision:
+  await appendScratch(root, branch, { decisions: ['Chose polling because no webhook API'] }, env);
+
+  const out = await runHook(payload('gh pr create --title T', { session_id: 'sessB' }), {
+    branchInfoImpl: async () => ({ current: branch, isDefault: false }),
+    repoRootImpl: async () => root,
+    isDisabledImpl: async () => false,
+    env,
+  });
+  // The block-to-be covers the whole branch: the earlier decision is surfaced.
+  assert.match(out.hookSpecificOutput!.permissionDecisionReason!, /Chose polling because no webhook API/);
+  assert.match(out.hookSpecificOutput!.permissionDecisionReason!, /Earlier work on this branch/i);
+  // And the scratchpad is consumed (cleared) at PR-create.
+  assert.equal(isScratchEmpty(await readScratch(root, branch, env)), true);
 });
 
 test('deny cap: a different branch (distinct PR) in the same session is still prompted', async () => {
