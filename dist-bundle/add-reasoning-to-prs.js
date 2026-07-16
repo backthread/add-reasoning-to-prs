@@ -8,12 +8,12 @@ async function readRawStdin(env = process.env, stdin = process.stdin) {
   const fromEnv = env.ADD_REASONING_TO_PRS_HOOK_INPUT;
   if (fromEnv && fromEnv.trim().length > 0) return fromEnv;
   if (stdin.isTTY) return "";
-  return new Promise((resolve) => {
+  return new Promise((resolve2) => {
     let data = "";
     stdin.setEncoding("utf8");
     stdin.on("data", (chunk) => data += chunk);
-    stdin.on("end", () => resolve(data));
-    stdin.on("error", () => resolve(data));
+    stdin.on("end", () => resolve2(data));
+    stdin.on("error", () => resolve2(data));
   });
 }
 
@@ -101,22 +101,122 @@ async function isDefaultBranch(cwd) {
   return current === "main" || current === "master";
 }
 
+// src/bodyFile.ts
+import { readFile, stat } from "node:fs/promises";
+import { isAbsolute, resolve } from "node:path";
+var FILE_FLAGS = /* @__PURE__ */ new Set(["--body-file", "--file", "-F"]);
+var MAX_BODY_FILE_BYTES = 1e6;
+function shellSplit(command) {
+  const tokens = [];
+  let cur = "";
+  let quote = null;
+  let started = false;
+  for (const ch of command) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      else cur += ch;
+      started = true;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      started = true;
+    } else if (/\s/.test(ch)) {
+      if (started) {
+        tokens.push(cur);
+        cur = "";
+        started = false;
+      }
+    } else {
+      cur += ch;
+      started = true;
+    }
+  }
+  if (started) tokens.push(cur);
+  return tokens;
+}
+function extractBodyFilePath(command) {
+  if (typeof command !== "string") return null;
+  const tokens = shellSplit(command);
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const eq = t.indexOf("=");
+    if (eq > 0 && t.startsWith("-")) {
+      if (FILE_FLAGS.has(t.slice(0, eq))) {
+        const val = t.slice(eq + 1);
+        return val && val !== "-" ? val : null;
+      }
+      continue;
+    }
+    if (FILE_FLAGS.has(t)) {
+      const val = tokens[i + 1] ?? "";
+      return val && val !== "-" ? val : null;
+    }
+  }
+  return null;
+}
+async function readBodyFile(path, cwd) {
+  try {
+    const full = isAbsolute(path) ? path : resolve(cwd, path);
+    const s = await stat(full);
+    if (!s.isFile() || s.size > MAX_BODY_FILE_BYTES) return "";
+    return await readFile(full, "utf8");
+  } catch {
+    return "";
+  }
+}
+
+// src/template.ts
+var PRIMITIVES = ["decisions", "assumptions", "tradeoffs", "limitations"];
+var HEADINGS = {
+  decisions: "Decisions",
+  assumptions: "Assumptions",
+  tradeoffs: "Trade-offs",
+  limitations: "Limitations"
+};
+function delimiters(surface) {
+  return surface === "pr" ? { open: PR_MARKER_OPEN, close: PR_MARKER_CLOSE } : { open: COMMIT_MARKER_OPEN, close: COMMIT_MARKER_CLOSE };
+}
+function clean(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean);
+}
+function isEmptyBlock(p) {
+  return PRIMITIVES.every((k) => clean(p[k]).length === 0);
+}
+function renderBlock(surface, p) {
+  if (isEmptyBlock(p)) return "";
+  const { open, close } = delimiters(surface);
+  const isPr = surface === "pr";
+  const lines = [open];
+  for (const key of PRIMITIVES) {
+    const items = clean(p[key]);
+    if (items.length === 0) continue;
+    lines.push(isPr ? `**${HEADINGS[key]}**` : `${HEADINGS[key]}:`);
+    for (const item of items) lines.push(`- ${item}`);
+    if (isPr) lines.push("");
+  }
+  while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+  lines.push(close);
+  return lines.join("\n");
+}
+
 // src/guidance.ts
 function surfaceCopy(surface) {
-  if (surface === "pr") {
-    return {
-      open: PR_MARKER_OPEN,
-      close: PR_MARKER_CLOSE,
-      moment: "this pull request is opened",
-      where: "the pull request description (the --body / --body-file text)"
-    };
-  }
-  return {
-    open: COMMIT_MARKER_OPEN,
-    close: COMMIT_MARKER_CLOSE,
+  return surface === "pr" ? {
+    moment: "this pull request is opened",
+    where: "the pull request description (the --body / --body-file text)"
+  } : {
     moment: "this commit lands on the default branch",
     where: "the commit message body"
   };
+}
+function exampleBlock(surface) {
+  const placeholder = ["<one concise line \u2014 omit this whole section if it does not apply>"];
+  return renderBlock(surface, {
+    decisions: placeholder,
+    assumptions: placeholder,
+    tradeoffs: placeholder,
+    limitations: placeholder
+  });
 }
 function buildGuidance(surface) {
   const c = surfaceCopy(surface);
@@ -134,14 +234,9 @@ Rules:
 - Grounded: every line must trace to real deliberation in this session. Cut anything padded, generic, or inferred.
 - If the session had no genuine decisions to record, that's fine \u2014 leave it out rather than manufacture filler.
 - Keep it tight: a few lines per section at most.
-- Wrap the block EXACTLY between these two markers so it is detected and left untouched on later runs:
+- Wrap the block EXACTLY between the two markers below so it is detected and left untouched on later runs:
 
-${c.open}
-Decisions:
-- <one concise line per decision>
-Trade-offs:
-- <...>
-${c.close}
+${exampleBlock(surface)}
 
 Then re-run your original command with the block included in ${c.where}.`;
 }
@@ -162,8 +257,13 @@ async function runHook(rawStdin, deps = {}) {
     if (typeof command !== "string" || command.trim().length === 0) return {};
     const kind = classifyCommand(command);
     if (kind === "other") return {};
-    if (hasMarker(command)) return {};
     const cwd = typeof rec.cwd === "string" && rec.cwd ? rec.cwd : deps.cwd ?? process.cwd();
+    if (hasMarker(command)) return {};
+    const bodyFilePath = extractBodyFilePath(command);
+    if (bodyFilePath) {
+      const contents = await readBodyFile(bodyFilePath, cwd);
+      if (hasMarker(contents)) return {};
+    }
     let surface;
     if (kind === "gh-pr-create") {
       surface = "pr";
