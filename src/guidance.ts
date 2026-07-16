@@ -7,7 +7,7 @@
 // aware (PR body vs commit message use different delimiters) and enumerates all four
 // primitives; the model includes only the sections that genuinely apply.
 
-import { HEADINGS, PRIMITIVES, delimiters, type Surface } from './template.js';
+import { renderBlock, type Surface } from './template.js';
 
 // Re-export so existing importers (hook.ts) keep a single import site for Surface.
 export type { Surface } from './template.js';
@@ -29,17 +29,16 @@ function surfaceCopy(surface: Surface): SurfaceCopy {
       };
 }
 
-/** A filled-in-shape example of the block for a surface (headings only, as a template). */
+/** A filled-in-shape example of the block for a surface, rendered from the canonical
+ * template so the guidance can never drift from what the block actually looks like. */
 function exampleBlock(surface: Surface): string {
-  const { open, close } = delimiters(surface);
-  const isPr = surface === 'pr';
-  const lines = [open];
-  for (const key of PRIMITIVES) {
-    lines.push(isPr ? `**${HEADINGS[key]}**` : `${HEADINGS[key]}:`);
-    lines.push('- <one concise line — omit this whole section if it does not apply>');
-  }
-  lines.push(close);
-  return lines.join('\n');
+  const placeholder = ['<one concise line — omit this whole section if it does not apply>'];
+  return renderBlock(surface, {
+    decisions: placeholder,
+    assumptions: placeholder,
+    tradeoffs: placeholder,
+    limitations: placeholder,
+  });
 }
 
 /**

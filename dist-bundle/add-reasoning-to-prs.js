@@ -155,6 +155,29 @@ var HEADINGS = {
 function delimiters(surface) {
   return surface === "pr" ? { open: PR_MARKER_OPEN, close: PR_MARKER_CLOSE } : { open: COMMIT_MARKER_OPEN, close: COMMIT_MARKER_CLOSE };
 }
+function clean(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean);
+}
+function isEmptyBlock(p) {
+  return PRIMITIVES.every((k) => clean(p[k]).length === 0);
+}
+function renderBlock(surface, p) {
+  if (isEmptyBlock(p)) return "";
+  const { open, close } = delimiters(surface);
+  const isPr = surface === "pr";
+  const lines = [open];
+  for (const key of PRIMITIVES) {
+    const items = clean(p[key]);
+    if (items.length === 0) continue;
+    lines.push(isPr ? `**${HEADINGS[key]}**` : `${HEADINGS[key]}:`);
+    for (const item of items) lines.push(`- ${item}`);
+    if (isPr) lines.push("");
+  }
+  while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+  lines.push(close);
+  return lines.join("\n");
+}
 
 // src/guidance.ts
 function surfaceCopy(surface) {
@@ -167,15 +190,13 @@ function surfaceCopy(surface) {
   };
 }
 function exampleBlock(surface) {
-  const { open, close } = delimiters(surface);
-  const isPr = surface === "pr";
-  const lines = [open];
-  for (const key of PRIMITIVES) {
-    lines.push(isPr ? `**${HEADINGS[key]}**` : `${HEADINGS[key]}:`);
-    lines.push("- <one concise line \u2014 omit this whole section if it does not apply>");
-  }
-  lines.push(close);
-  return lines.join("\n");
+  const placeholder = ["<one concise line \u2014 omit this whole section if it does not apply>"];
+  return renderBlock(surface, {
+    decisions: placeholder,
+    assumptions: placeholder,
+    tradeoffs: placeholder,
+    limitations: placeholder
+  });
 }
 function buildGuidance(surface) {
   const c = surfaceCopy(surface);
