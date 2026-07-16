@@ -1,0 +1,20 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+.env
+.env.*
+
+# Build outputs.
+#
+# `dist/` (the tsc multi-file typecheck output) is ephemeral and never committed.
+#
+# `dist-bundle/add-reasoning-to-prs.js` (the esbuild self-contained bin) is the
+# EXCEPTION: it is a COMMITTED distribution artifact. The Claude Code plugin references
+# it via ${CLAUDE_PLUGIN_ROOT}/dist-bundle/add-reasoning-to-prs.js, and Claude Code runs
+# NO build step when it installs the plugin — so the bundle MUST be in git or the
+# installed plugin's hook can't find its bin. `npm run bundle` regenerates it; CI
+# verifies the committed copy is in sync with src. Ignore anything else that lands in
+# the dir, but track the bundle itself.
+dist-bundle/*
+!dist-bundle/add-reasoning-to-prs.js
