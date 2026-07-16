@@ -9,7 +9,6 @@ async function withCapturedStdout(
 ): Promise<{ code: number; out: string }> {
   const chunks: string[] = [];
   const orig = process.stdout.write.bind(process.stdout);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (process.stdout as unknown as { write: (c: unknown) => boolean }).write = (c: unknown) => {
     chunks.push(String(c));
     return true;
