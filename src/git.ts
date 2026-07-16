@@ -38,15 +38,24 @@ export async function defaultBranch(cwd: string): Promise<string | null> {
   return null;
 }
 
+export interface BranchInfo {
+  /** The current branch name, or null (detached HEAD / non-repo / error). */
+  current: string | null;
+  /** Whether `current` is the repo's default branch. */
+  isDefault: boolean;
+}
+
 /**
- * True if the current branch is the repo's default branch. When the remote default is
- * unknown (no origin/HEAD), fall back to the conventional names — a direct commit onto
- * `main`/`master` is the case we care about. Any error → false (defer / do nothing).
+ * The current branch name AND whether it's the repo's default — resolved in one pass so
+ * the caller needn't query git twice (it needs the name for the deny-cap key and the
+ * default-ness for surface routing). When the remote default is unknown (no origin/HEAD),
+ * fall back to the conventional names — a direct commit onto `main`/`master` is the case
+ * we care about. Any error → `{ current: null, isDefault: false }` (defer / do nothing).
  */
-export async function isDefaultBranch(cwd: string): Promise<boolean> {
+export async function branchInfo(cwd: string): Promise<BranchInfo> {
   const current = await currentBranch(cwd);
-  if (!current) return false;
+  if (!current) return { current: null, isDefault: false };
   const def = await defaultBranch(cwd);
-  if (def) return current === def;
-  return current === 'main' || current === 'master';
+  const isDefault = def ? current === def : current === 'main' || current === 'master';
+  return { current, isDefault };
 }
