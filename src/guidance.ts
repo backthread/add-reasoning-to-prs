@@ -8,6 +8,7 @@
 // primitives; the model includes only the sections that genuinely apply.
 
 import { renderBlock, type Surface } from './template.js';
+import { SKIP_TOKEN } from './repoConfig.js';
 
 // Re-export so existing importers (hook.ts) keep a single import site for Surface.
 export type { Surface } from './template.js';
@@ -60,11 +61,15 @@ Compose the block ONLY from what you actually decided in THIS session — never 
 Rules:
 - Forward-only: capture what the diff can't show — the why, and the risks knowingly taken. Never summarize the changes.
 - Grounded: every line must trace to real deliberation in this session. Cut anything padded, generic, or inferred.
-- If the session had no genuine decisions to record, that's fine — leave it out rather than manufacture filler.
 - Keep it tight: a few lines per section at most.
 - Wrap the block EXACTLY between the two markers below so it is detected and left untouched on later runs:
 
 ${exampleBlock(surface)}
 
-Then re-run your original command with the block included in ${c.where}.`;
+Self-check BEFORE you write — a quick grounded pass, no tools or network needed:
+- Take each candidate line and name the specific point in THIS session where that decision, assumption, trade-off, or limitation actually came up. If you can't point to one, delete the line.
+- Delete anything that just restates the diff ("added X", "refactored Y") without a why, and any generic filler ("improves code quality", "various cleanups").
+- Whatever survives is the block. If NOTHING survives, there is no block to add: re-run your original command unchanged, or add ${SKIP_TOKEN} to it to opt out explicitly. Never manufacture filler to fill the template — an empty block is the correct outcome for a session that didn't deliberate.
+
+Otherwise, re-run your original command with the surviving block included in ${c.where}.`;
 }
