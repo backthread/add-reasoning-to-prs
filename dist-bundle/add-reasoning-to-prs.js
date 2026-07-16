@@ -106,28 +106,48 @@ import { readFile, stat } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 var FILE_FLAGS = /* @__PURE__ */ new Set(["--body-file", "--file", "-F"]);
 var MAX_BODY_FILE_BYTES = 1e6;
-function unquote(s) {
-  const t = s.trim();
-  if (t.length >= 2 && (t[0] === '"' && t[t.length - 1] === '"' || t[0] === "'" && t[t.length - 1] === "'")) {
-    return t.slice(1, -1);
+function shellSplit(command) {
+  const tokens = [];
+  let cur = "";
+  let quote = null;
+  let started = false;
+  for (const ch of command) {
+    if (quote) {
+      if (ch === quote) quote = null;
+      else cur += ch;
+      started = true;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      started = true;
+    } else if (/\s/.test(ch)) {
+      if (started) {
+        tokens.push(cur);
+        cur = "";
+        started = false;
+      }
+    } else {
+      cur += ch;
+      started = true;
+    }
   }
-  return t;
+  if (started) tokens.push(cur);
+  return tokens;
 }
 function extractBodyFilePath(command) {
   if (typeof command !== "string") return null;
-  const tokens = command.split(/\s+/).filter(Boolean);
+  const tokens = shellSplit(command);
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
     const eq = t.indexOf("=");
-    if (eq > 0) {
+    if (eq > 0 && t.startsWith("-")) {
       if (FILE_FLAGS.has(t.slice(0, eq))) {
-        const val = unquote(t.slice(eq + 1));
+        const val = t.slice(eq + 1);
         return val && val !== "-" ? val : null;
       }
       continue;
     }
     if (FILE_FLAGS.has(t)) {
-      const val = unquote(tokens[i + 1] ?? "");
+      const val = tokens[i + 1] ?? "";
       return val && val !== "-" ? val : null;
     }
   }

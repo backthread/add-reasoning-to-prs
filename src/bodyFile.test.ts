@@ -14,6 +14,13 @@ test('extracts a body/message file path across the flag forms', () => {
   assert.equal(extractBodyFilePath('git commit --file msg.txt'), 'msg.txt');
   assert.equal(extractBodyFilePath('git commit --file=msg.txt'), 'msg.txt');
   assert.equal(extractBodyFilePath("gh pr create --body-file 'notes.md'"), 'notes.md');
+  // Quoted path containing spaces survives as one token (both flag forms).
+  assert.equal(extractBodyFilePath('gh pr create --body-file "my notes.md"'), 'my notes.md');
+  assert.equal(extractBodyFilePath('gh pr create --body-file="my notes.md"'), 'my notes.md');
+});
+
+test('does not treat a non-flag VAR=value token as a file flag', () => {
+  assert.equal(extractBodyFilePath('FOO=bar git commit -m x'), null);
 });
 
 test('returns null when there is no file (inline body, or stdin "-")', () => {
