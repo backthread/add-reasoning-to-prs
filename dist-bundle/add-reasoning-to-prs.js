@@ -438,6 +438,9 @@ Rules:
 - Forward-only: capture what the diff can't show \u2014 the why, and the risks knowingly taken. Never summarize the changes.
 - Grounded: every line must trace to real deliberation in this session. Cut anything padded, generic, or inferred.
 - Keep it tight: a few lines per section at most.
+- Write it plainly \u2014 the reviewer may not be a native English speaker. One idea per sentence; prefer several short sentences over one long one with stacked clauses.
+- Use plain words, not idioms or metaphors \u2014 say the literal thing ("follow foreign keys", not "hop the graph"; "turn it off", not "kill-switch"). Keep real names (tables, flags, functions, endpoints, keys) exactly \u2014 never trade a concrete name for a vague one.
+- Avoid "X \u2192 Y" / "X: Y" logic shorthand; write it as a sentence (a relationship example like \`a\` \u2192 \`b\` is fine). For a risk, end with a short action the reviewer can take, e.g. "Check: review both lists".
 - Wrap the block EXACTLY between the two markers below so it is detected and left untouched on later runs:
 
 ${exampleBlock(surface)}
