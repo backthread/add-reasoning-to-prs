@@ -31,3 +31,12 @@ test('guidance makes the leave-empty path explicit (no manufactured filler)', ()
   assert.ok(g.includes(SKIP_TOKEN), 'guidance should surface the explicit skip escape hatch');
   assert.match(g, /never manufacture filler/i);
 });
+
+test('guidance tells the model to write plainly (non-native-reader friendly)', () => {
+  const g = buildGuidance('pr');
+  assert.match(g, /native English speaker/i);
+  assert.match(g, /one idea per sentence/i);
+  assert.match(g, /not idioms or metaphors/i);
+  assert.match(g, /never trade a concrete name for a vague one/i);
+  assert.match(g, /end with a short action/i);
+});
