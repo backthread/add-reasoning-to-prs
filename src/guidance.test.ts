@@ -38,5 +38,23 @@ test('guidance tells the model to write plainly (non-native-reader friendly)', (
   assert.match(g, /one idea per sentence/i);
   assert.match(g, /not idioms or metaphors/i);
   assert.match(g, /never trade a concrete name for a vague one/i);
-  assert.match(g, /end with a short action/i);
+  assert.match(g, /a short action/i);
+});
+
+test('guidance carries the restraint, insight, no-cringe, and attribution rules', () => {
+  const pr = buildGuidance('pr');
+  assert.match(pr, /Size the block to the change/i); // restraint
+  assert.match(pr, /Lead with the one point a reviewer could NOT get from the diff/i); // insight
+  assert.match(pr, /do not guess it/i); // never fabricate a why
+  assert.match(pr, /claim plus its silent consequence/i); // caveat bar
+  assert.match(pr, /No self-praise/i); // no-cringe
+  assert.match(pr, /## Reasoning/); // visible attribution (PR surface)
+  assert.match(pr, /backthread\/add-reasoning-to-prs/); // attributed to the package
+});
+
+test('commit-surface attribution is plain text (no markdown heading, HTML, or links)', () => {
+  const commit = buildGuidance('commit');
+  assert.match(commit, /written in-session via backthread\/add-reasoning-to-prs/);
+  assert.doesNotMatch(commit, /## Reasoning/); // a commit message doesn't render markdown
+  assert.doesNotMatch(commit, /<sub>/);
 });
