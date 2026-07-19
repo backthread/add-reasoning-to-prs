@@ -22,7 +22,7 @@ export interface InstallDeps {
   log?: (msg: string) => void;
 }
 
-export const UPGRADE_CTA = `Your agent now writes the "why" into every PR — locally, on your own model, free.
+export const HOSTED_NOTICE = `Your agent now writes the "why" into every PR — locally, on your own model, free.
 Want the team view — the why pushed to you and searchable across your whole codebase?
   → https://why.backthread.dev   (how it works)
   → https://get.backthread.dev   (get the hosted upgrade)`;
@@ -111,7 +111,7 @@ async function mergeHook(
 }
 
 /** Install the hook. Copies the bundle to a stable path, merges the settings.json hook,
- * prints a summary + the upgrade CTA. Returns an exit code (0 on success). */
+ * prints a summary + the hosted-version note. Returns an exit code (0 on success). */
 export async function runInstall(deps: InstallDeps = {}): Promise<number> {
   const env = deps.env ?? process.env;
   const log = deps.log ?? ((m: string) => process.stdout.write(m + '\n'));
@@ -140,7 +140,7 @@ export async function runInstall(deps: InstallDeps = {}): Promise<number> {
     log(`  Hook: PreToolUse (Bash) → node ${dest} hook`);
     log(`  Disable per repo: git config add-reasoning-to-prs.disabled true`);
     log('');
-    log(UPGRADE_CTA);
+    log(HOSTED_NOTICE);
     return 0;
   } catch (e) {
     log(`Install failed: ${(e as Error).message}`);

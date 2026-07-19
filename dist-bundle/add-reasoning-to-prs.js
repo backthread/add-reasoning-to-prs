@@ -615,7 +615,7 @@ import { homedir as homedir3 } from "node:os";
 import { join as join3, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readFile as readFile4, writeFile as writeFile3, mkdir as mkdir3, copyFile, chmod as chmod3 } from "node:fs/promises";
-var UPGRADE_CTA = `Your agent now writes the "why" into every PR \u2014 locally, on your own model, free.
+var HOSTED_NOTICE = `Your agent now writes the "why" into every PR \u2014 locally, on your own model, free.
 Want the team view \u2014 the why pushed to you and searchable across your whole codebase?
   \u2192 https://why.backthread.dev   (how it works)
   \u2192 https://get.backthread.dev   (get the hosted upgrade)`;
@@ -694,7 +694,7 @@ async function runInstall(deps = {}) {
     log(`  Hook: PreToolUse (Bash) \u2192 node ${dest} hook`);
     log(`  Disable per repo: git config add-reasoning-to-prs.disabled true`);
     log("");
-    log(UPGRADE_CTA);
+    log(HOSTED_NOTICE);
     return 0;
   } catch (e) {
     log(`Install failed: ${e.message}`);

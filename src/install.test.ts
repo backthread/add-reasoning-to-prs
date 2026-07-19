@@ -30,7 +30,7 @@ test('install copies the bundle and adds the PreToolUse/Bash hook', async () => 
   assert.equal(pre.length, 1);
   assert.equal(pre[0].matcher, 'Bash');
   assert.match(pre[0].hooks[0].command, /add-reasoning-to-prs\.js" hook$/);
-  // The upgrade CTA is printed.
+  // The hosted-version note is printed.
   assert.match(f.logs.join('\n'), /why\.backthread\.dev/);
 });
 
