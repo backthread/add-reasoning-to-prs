@@ -1,16 +1,26 @@
+<div align="center">
+
 # add-reasoning-to-prs
 
-A [Claude Code](https://docs.claude.com/en/docs/claude-code) hook that writes a
-short, **forward-only "why" block** — the decisions, trade-offs, assumptions, and
-limitations behind a change — into your pull request description (or your commit
-message on a direct push) at the moment the PR is opened.
+**Self-documenting PRs.** A [Claude Code](https://docs.claude.com/en/docs/claude-code) hook that writes the *why* — decisions, trade-offs, assumptions, limitations — into every pull request, automatically. Composed by your own agent, on your own machine.
 
-It captures what a diff can never show: *why* the change is the way it is, and the
-risks knowingly taken. The block is composed by your own coding agent, in-session,
-locally — no account, no server round-trip, nothing stored.
+[![npm](https://img.shields.io/npm/v/add-reasoning-to-prs.svg)](https://www.npmjs.com/package/add-reasoning-to-prs)
+[![CI](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-8A63D2.svg)](https://docs.claude.com/en/docs/claude-code)
 
-> **Early release.** This is a `0.x` line and Claude Code only for now. Full docs
-> are on the way.
+![Before and after: a PR titled "update auth flow" with an empty description, next to the same PR with a generated Decisions / Trade-offs / Assumptions / Limitations block.](assets/demo.gif)
+
+</div>
+
+AI writes your code. Nobody writes down *why*. Three weeks in, your git history is a
+pile of decisions you technically own but never actually made — the diff says *what*
+changed, `git blame` says *who*, and the reasoning is just… gone.
+
+This is a hook that fixes that at the source: right before your agent opens a PR (or
+lands a commit on your default branch), it writes a short **"why" block** — the
+decisions it made, the trade-offs it weighed, what it assumed, and what it knowingly
+left — straight into the description. From the actual session. Not the diff.
 
 ## Install
 
@@ -20,33 +30,72 @@ One command:
 npx add-reasoning-to-prs
 ```
 
-This copies the self-contained hook and registers it in your Claude Code settings
-(`~/.claude/settings.json`) as a `PreToolUse` hook — no build step, no dependencies.
+That copies the self-contained, zero-dependency hook to a stable location and registers
+it in your Claude Code settings (`~/.claude/settings.json`) as a `PreToolUse` hook. No
+build step, no account, no config.
 
 Or install the **Claude Code plugin** from the marketplace (recommended — it registers
-the hook globally from the plugin manifest and updates with the plugin, without touching
-your project settings).
+the hook from the plugin manifest and updates with the plugin, without touching your
+project settings).
+
+> **Requirements:** Claude Code and Node.js ≥ 22.18. Claude Code only, for now — Cursor
+> and Codex are next.
+
+## What it does
+
+| | |
+|---|---|
+| **Auto "why" block at PR-create** | When your agent runs `gh pr create` (or commits to your default branch) without one, the hook asks it to write the block first, then re-run. Zero manual steps once it's installed. |
+| **Forward-only — never restates the diff** | It captures what a diff *can't* show: the reasoning and the risks knowingly taken. It leads with the one point a reviewer couldn't get from the code, and never pads with "refactored X, improved Y". |
+| **Local, your own subscription, no account** | The block is composed by your own agent, in-session. No server round-trip, nothing stored, and your source never leaves your machine. |
+| **Never fabricates** | Every line has to trace to a real decision in the session. If the agent didn't actually deliberate, no block is added — an empty block is the correct answer for a routine change. |
+
+## What this does **not** do
+
+- **It's not a review bot.** It doesn't grade your code, score your PR, or gate a merge. It sits *above the diff*, alongside review — it adds context, it doesn't judge.
+- **It's not a diagram, wiki, or knowledge graph.** Nothing to browse, nothing to keep in sync. Just the why, written where reviewers already look: the PR description.
+- **It doesn't read or send your source anywhere.** No account, no upload, no telemetry. The block is composed on your machine by the agent you're already running, on your own model subscription.
+- **It's forward-only.** It writes the why for PRs going forward. It never rewrites your closed history, and it never touches your git command if anything goes wrong — a hook error always fails open.
+
+**Free and MIT, for good.** [Backthread](https://backthread.dev) — the paid hosted layer
+— does the cross-team, historical, and proactive-push parts a local hook structurally
+can't: the why pushed to you, searchable across your whole codebase, across everyone's
+agents. This hook needs none of that to be useful on its own. If you ever want the team
+view, it's at [backthread.dev](https://backthread.dev).
+
+## How it works
+
+The hook watches for two moments: opening a PR (`gh pr create`) and landing a direct
+commit on your default branch. When it sees one without a why-block, it asks your agent
+to compose a grounded, forward-only block from its own session reasoning — the
+**Decisions, Trade-offs, Assumptions, and Limitations** behind the change — and re-run
+the command. The block is wrapped in an invisible marker, so it's written once and never
+duplicated.
+
+- **Feature-branch commits defer to the PR.** Work spread across several sessions is
+  carried forward locally, so the PR's block covers the whole branch — even if a
+  different session opens it.
+- **Nothing is ever invented.** The agent runs a quick self-check first and drops any
+  line it can't trace to a real decision; if the session didn't deliberate, no block is
+  added.
+- **It never blocks your git command.** Every failure mode is a silent no-op — worst
+  case, no block gets added.
+
+Each block carries a small visible attribution so reviewers can see where it came from —
+and you can edit or delete it freely.
 
 ## Controls
 
 - **Turn it off for a repo:** `git config add-reasoning-to-prs.disabled true`
 - **Skip a single commit/PR:** put `[skip-why]` anywhere in the command.
+- **Turn it off globally:** set `ADD_REASONING_TO_PRS_DISABLE=1` in the environment you
+  launch Claude Code with.
 
-## How it works
+## Star it
 
-When you're about to open a PR (`gh pr create`) or land a direct commit on your default
-branch, the hook asks your agent to add a grounded "why" block first, wrapped in an
-invisible marker so it's written once and never duplicated. Feature-branch commits defer
-to the eventual PR; work spread across multiple sessions is carried forward so the PR's
-block covers the whole branch. Nothing is ever fabricated — if a session didn't
-deliberate, no block is added. A hook error never blocks your git command.
-
----
-
-Your agent writes the "why" into every PR — locally, on your own model, free. Want the
-team view — the why pushed to you and searchable across your whole codebase? See
-[why.backthread.dev](https://why.backthread.dev) and [get.backthread.dev](https://get.backthread.dev).
+If this saves you one archaeological dig back through your own PRs, a ⭐ helps other
+people find it.
 
 ## License
 
-MIT
+MIT © [Backthread](https://backthread.dev). Do whatever you want with it.
