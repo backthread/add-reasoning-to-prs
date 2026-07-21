@@ -617,8 +617,7 @@ import { fileURLToPath } from "node:url";
 import { readFile as readFile4, writeFile as writeFile3, mkdir as mkdir3, copyFile, chmod as chmod3 } from "node:fs/promises";
 var HOSTED_NOTICE = `Your agent now writes the "why" into every PR \u2014 locally, on your own model, free.
 Want the team view \u2014 the why pushed to you and searchable across your whole codebase?
-  \u2192 https://why.backthread.dev   (how it works)
-  \u2192 https://get.backthread.dev   (get the hosted upgrade)`;
+  \u2192 https://backthread.dev   (the hosted upgrade)`;
 function claudeDir(env) {
   const override = env.CLAUDE_CONFIG_DIR;
   return override && override.trim().length > 0 ? override : join3(homedir3(), ".claude");

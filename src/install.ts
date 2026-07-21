@@ -24,8 +24,7 @@ export interface InstallDeps {
 
 export const HOSTED_NOTICE = `Your agent now writes the "why" into every PR — locally, on your own model, free.
 Want the team view — the why pushed to you and searchable across your whole codebase?
-  → https://why.backthread.dev   (how it works)
-  → https://get.backthread.dev   (get the hosted upgrade)`;
+  → https://backthread.dev   (the hosted upgrade)`;
 
 function claudeDir(env: NodeJS.ProcessEnv): string {
   const override = env.CLAUDE_CONFIG_DIR;
