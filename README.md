@@ -91,6 +91,30 @@ and you can edit or delete it freely.
 - **Turn it off globally:** set `ADD_REASONING_TO_PRS_DISABLE=1` in the environment you
   launch Claude Code with.
 
+## Roadmap
+
+The honest state of the project — what works, what's next, and what it doesn't do yet.
+
+- **Working today:** the "why" block at `gh pr create`, the direct-push commit-message
+  fallback, multi-session carry-forward across a branch, 100% local (your own model, no
+  account), never-fabricate, and fail-open.
+- **Next:** Cursor and Codex support (Claude Code only for now — this is the top of the
+  list) · coverage for PRs opened in the browser · a tighter why-block format.
+- **Known gaps:** multi-session gather is best-effort (a local per-branch scratchpad),
+  and how the block reads after a squash-merge is still being refined.
+
+The full list lives in [Issues](../../issues) and [Discussions](../../discussions) —
+👍 the limits that matter to you and they move up the list.
+
+## Contributing
+
+Contributions are welcome — especially bug fixes, sharper prompt/guidance copy,
+edge-case coverage, and support for more agents. It's a small, single-purpose tool and
+means to stay that way, so scope-broadening requests are usually declined (kindly, with
+a reason). Start with the [contributing guide](CONTRIBUTING.md) and the
+[`good first issue`](../../labels/good%20first%20issue) label; if you're unsure whether
+an idea fits, open a [Discussion](../../discussions) first.
+
 ## Star it
 
 If this saves you one archaeological dig back through your own PRs, a ⭐ helps other
