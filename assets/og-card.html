@@ -1,0 +1,116 @@
+<!doctype html>
+<!--
+  og-card.html — the 1280x640 social-preview (OG) image for add-reasoning-to-prs.
+  Matches the demo GIF's style (JetBrains Mono + the Catppuccin-tone palette).
+
+  Render (needs Google Chrome + JetBrains Mono installed), from the repo root:
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+      --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --window-size=1280,640 --screenshot=assets/og-social-preview.png \
+      "file://$PWD/assets/og-card.html"
+
+  Then upload assets/og-social-preview.png in GitHub -> Settings -> General ->
+  Social preview. GitHub has no API for the social preview, so this upload is manual.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root{
+    --bg:#13151d; --panel:#1a1d28; --line:#2b2f3e;
+    --white:#e8ebf2; --dim:#8b93a7; --faint:#565d73;
+    --cyan:#89b4fa; --green:#a6e3a1; --coral:#ff6b81; --coraltxt:#f38ba8;
+    --yellow:#f9e2af; --mauve:#cba6f7;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:1280px;height:640px;background:var(--bg);overflow:hidden}
+  body{
+    font-family:"JetBrains Mono","SF Mono",Menlo,monospace;
+    color:var(--white);
+    display:flex;align-items:center;
+    padding:52px 56px;gap:44px;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* subtle top accent bar echoing the palette */
+  .accent{position:absolute;left:0;top:0;height:6px;width:1280px;
+    background:linear-gradient(90deg,var(--coral) 0 22%,var(--yellow) 22% 44%,var(--green) 44% 68%,var(--cyan) 68% 86%,var(--mauve) 86% 100%);}
+
+  .left{width:690px;flex:0 0 690px;display:flex;flex-direction:column;height:100%;justify-content:center}
+  .kicker{font-size:19px;font-weight:700;color:var(--mauve);letter-spacing:.5px}
+  .kicker .sep{color:var(--faint);font-weight:500;margin:0 8px}
+  .kicker .tag{color:var(--dim);font-weight:500}
+
+  h1{font-size:45px;line-height:1.16;font-weight:800;letter-spacing:-.5px;margin-top:22px}
+  h1 .coral{color:var(--coraltxt)}
+  .chip{display:inline-block;border-radius:7px;padding:1px 11px;color:#13151d;font-weight:800}
+  .chip.y{background:var(--yellow)}
+
+  .sub{font-size:20px;line-height:1.5;color:var(--dim);margin-top:22px;font-weight:500;max-width:660px}
+  .sub .w{color:var(--white)}
+  .sub .g{color:var(--green);font-weight:700}
+
+  .install{margin-top:30px}
+  .cmd{display:inline-flex;align-items:center;gap:10px;background:#0e1017;border:1px solid var(--line);
+    border-radius:10px;padding:12px 18px;font-size:22px;font-weight:700}
+  .cmd .p{color:var(--green)}
+  .cmd .npx{color:var(--mauve)}
+  .meta{margin-top:14px;font-size:15px;color:var(--faint);font-weight:500;letter-spacing:.2px}
+  .meta b{color:var(--dim);font-weight:700}
+
+  /* right: the PR-description proof card */
+  .card{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:24px 26px;height:492px;display:flex;flex-direction:column;
+    box-shadow:0 24px 60px rgba(0,0,0,.35)}
+  .badges{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:800}
+  .b{border-radius:6px;padding:2px 10px;color:#13151d}
+  .b.before{background:var(--coral)}
+  .b.after{background:var(--green)}
+  .arrow{color:var(--faint);font-weight:700}
+  .prtitle{font-size:21px;font-weight:700;margin-top:16px}
+  .nodesc{font-size:16px;color:var(--coraltxt);margin-top:4px;font-weight:600}
+  .rule{height:1px;background:var(--line);margin:16px 0 14px}
+  .why{font-size:18px;font-weight:800;color:var(--green)}
+  .rows{margin-top:13px;display:flex;flex-direction:column;gap:13px}
+  .row .lab{font-size:16px;font-weight:800;color:var(--cyan)}
+  .row .txt{font-size:15px;line-height:1.35;color:var(--dim);font-weight:500;margin-top:2px;white-space:nowrap}
+  .foot{margin-top:auto;font-size:13px;color:var(--faint);font-weight:500;font-style:italic;padding-top:12px}
+</style>
+</head>
+<body>
+  <div class="accent"></div>
+
+  <div class="left">
+    <div class="kicker">add-reasoning-to-prs<span class="sep">·</span><span class="tag">Claude Code hook · MIT</span></div>
+
+    <h1>AI wrote the code.<br>Nobody wrote down <span class="chip y">WHY</span><span class="coral">.</span></h1>
+
+    <div class="sub">The hook that writes <span class="w">the why</span> — decisions, trade-offs,
+      assumptions, limitations — into every PR. <span class="g">Automatically.</span></div>
+
+    <div class="install">
+      <div class="cmd"><span class="p">$</span><span class="npx">npx add-reasoning-to-prs</span></div>
+      <div class="meta"><b>Free · MIT</b> · runs on your own machine · source never leaves it</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="badges"><span class="b before">BEFORE</span><span class="arrow">→</span><span class="b after">AFTER</span>
+      <span style="margin-left:auto;color:var(--faint);font-weight:600;font-size:14px">PR&nbsp;description</span></div>
+
+    <div class="prtitle">update auth flow</div>
+    <div class="nodesc">— (no description)</div>
+
+    <div class="rule"></div>
+
+    <div class="why">## Why</div>
+    <div class="rows">
+      <div class="row"><div class="lab">Decisions</div><div class="txt">Short-lived JWT in an httpOnly cookie.</div></div>
+      <div class="row"><div class="lab">Trade-offs</div><div class="txt">Refresh-token rotation over long sessions.</div></div>
+      <div class="row"><div class="lab">Assumptions</div><div class="txt">Every client can hold a secure cookie.</div></div>
+      <div class="row"><div class="lab">Limitations</div><div class="txt">No SSO yet — email + password only.</div></div>
+    </div>
+
+    <div class="foot">written by the agent that made the change</div>
+  </div>
+</body>
+</html>
