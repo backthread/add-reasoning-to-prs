@@ -1,4 +1,4 @@
-[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · **日本語** · [한국어](README.ko.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Русский](README.ru.md)
+[English](../../README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · **日本語** · [한국어](README.ko.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Русский](README.ru.md)
 
 <div align="center">
 
@@ -8,14 +8,14 @@
 
 [![npm](https://img.shields.io/npm/v/add-reasoning-to-prs.svg)](https://www.npmjs.com/package/add-reasoning-to-prs)
 [![CI](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-8A63D2.svg)](https://docs.claude.com/en/docs/claude-code)
 
-![ビフォーアフターの比較：「update auth flow」というタイトルで説明が空のPRと、生成された「決定 / トレードオフ / 前提 / 制約」ブロックが付いた同じPR。](assets/demo.gif)
+![ビフォーアフターの比較：「update auth flow」というタイトルで説明が空のPRと、生成された「決定 / トレードオフ / 前提 / 制約」ブロックが付いた同じPR。](../../assets/demo.gif)
 
 </div>
 
-> 翻訳はコミュニティによるベストエフォートであり、最新版に追いついていない場合があります。正となるのは英語版（[README.md](README.md)）です。
+> 翻訳はコミュニティによるベストエフォートであり、最新版に追いついていない場合があります。正となるのは英語版（[README.md](../../README.md)）です。
 
 AIがコードを書く。しかし *理由* は誰も書き残さない。3週間もすれば、あなたのGit履歴は、
 名目上はあなたのものでも実際には自分で下したことのない決定の山になる — diffは *何が*
@@ -105,7 +105,7 @@ npx add-reasoning-to-prs
 - **既知のギャップ:** マルチセッションの収集はベストエフォート（ローカルのブランチごとの
   スクラッチパッド）であり、スカッシュマージ後にブロックがどう読めるかはまだ調整中です。
 
-完全なリストは [Issues](../../issues) と [Discussions](../../discussions) にあります —
+完全なリストは [Issues](https://github.com/backthread/add-reasoning-to-prs/issues) と [Discussions](https://github.com/backthread/add-reasoning-to-prs/discussions) にあります —
 あなたにとって重要な制約に 👍 を付ければ、リストの上位に上がっていきます。
 
 ## コントリビュート
@@ -113,8 +113,8 @@ npx add-reasoning-to-prs
 コントリビューションを歓迎します — 特にバグ修正、より鋭いプロンプト/ガイダンス文言、エッジ
 ケースへの対応、そしてより多くのエージェントのサポートです。これは小さく単一目的のツールで、
 その姿勢を保つつもりなので、スコープを広げる要望は通常（丁寧に、理由を添えて）お断りしています。
-まずは[コントリビューションガイド](CONTRIBUTING.md)と [`good first issue`](../../labels/good%20first%20issue)
-ラベルから始めてください。アイデアが合うか分からない場合は、まず [Discussion](../../discussions)
+まずは[コントリビューションガイド](../../CONTRIBUTING.md)と [`good first issue`](https://github.com/backthread/add-reasoning-to-prs/labels/good%20first%20issue)
+ラベルから始めてください。アイデアが合うか分からない場合は、まず [Discussion](https://github.com/backthread/add-reasoning-to-prs/discussions)
 を開いてください。
 
 ## スターを

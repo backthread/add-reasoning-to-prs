@@ -1,4 +1,4 @@
-[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · **Русский**
+[English](../../README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · **Русский**
 
 <div align="center">
 
@@ -8,14 +8,14 @@
 
 [![npm](https://img.shields.io/npm/v/add-reasoning-to-prs.svg)](https://www.npmjs.com/package/add-reasoning-to-prs)
 [![CI](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-8A63D2.svg)](https://docs.claude.com/en/docs/claude-code)
 
-![До и после: PR с заголовком «update auth flow» и пустым описанием рядом с тем же PR, где сгенерирован блок «Решения / Компромиссы / Допущения / Ограничения».](assets/demo.gif)
+![До и после: PR с заголовком «update auth flow» и пустым описанием рядом с тем же PR, где сгенерирован блок «Решения / Компромиссы / Допущения / Ограничения».](../../assets/demo.gif)
 
 </div>
 
-> Переводы — это добросовестное усилие сообщества, и они могут отставать. Авторитетным источником является английская версия ([README.md](README.md)).
+> Переводы — это добросовестное усилие сообщества, и они могут отставать. Авторитетным источником является английская версия ([README.md](../../README.md)).
 
 ИИ пишет ваш код. А *почему* — не пишет никто. Через три недели ваша история Git — это
 груда решений, которые формально ваши, но которые вы на самом деле никогда не принимали —
@@ -107,7 +107,7 @@ npx add-reasoning-to-prs
 - **Известные пробелы:** сбор между сессиями делается по мере возможности (локальный
   черновик на каждую ветку), а то, как читается блок после squash-merge, всё ещё дорабатывается.
 
-Полный список — в [Issues](../../issues) и [Discussions](../../discussions) — ставьте 👍
+Полный список — в [Issues](https://github.com/backthread/add-reasoning-to-prs/issues) и [Discussions](https://github.com/backthread/add-reasoning-to-prs/discussions) — ставьте 👍
 ограничениям, которые важны именно вам, и они поднимутся выше в списке.
 
 ## Участие
@@ -116,9 +116,9 @@ npx add-reasoning-to-prs
 охват краевых случаев и поддержка новых агентов. Это маленький инструмент с единственным
 назначением, и он намерен таким и остаться, поэтому запросы на расширение охвата обычно
 отклоняются (вежливо и с обоснованием). Начните с
-[руководства для контрибьюторов](CONTRIBUTING.md) и метки
-[`good first issue`](../../labels/good%20first%20issue); если вы не уверены, вписывается ли
-идея, сначала откройте [Discussion](../../discussions).
+[руководства для контрибьюторов](../../CONTRIBUTING.md) и метки
+[`good first issue`](https://github.com/backthread/add-reasoning-to-prs/labels/good%20first%20issue); если вы не уверены, вписывается ли
+идея, сначала откройте [Discussion](https://github.com/backthread/add-reasoning-to-prs/discussions).
 
 ## Поставьте звезду
 

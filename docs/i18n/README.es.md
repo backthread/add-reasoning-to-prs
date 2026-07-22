@@ -1,4 +1,4 @@
-[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · **Español** · [Português](README.pt-BR.md) · [Русский](README.ru.md)
+[English](../../README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · [한국어](README.ko.md) · **Español** · [Português](README.pt-BR.md) · [Русский](README.ru.md)
 
 <div align="center">
 
@@ -8,14 +8,14 @@
 
 [![npm](https://img.shields.io/npm/v/add-reasoning-to-prs.svg)](https://www.npmjs.com/package/add-reasoning-to-prs)
 [![CI](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-8A63D2.svg)](https://docs.claude.com/en/docs/claude-code)
 
-![Antes y después: un PR titulado «update auth flow» con una descripción vacía, junto al mismo PR con un bloque generado de Decisiones / Concesiones / Supuestos / Limitaciones.](assets/demo.gif)
+![Antes y después: un PR titulado «update auth flow» con una descripción vacía, junto al mismo PR con un bloque generado de Decisiones / Concesiones / Supuestos / Limitaciones.](../../assets/demo.gif)
 
 </div>
 
-> Las traducciones son un esfuerzo de la comunidad y pueden quedar desactualizadas. La versión en inglés ([README.md](README.md)) es la fuente autoritativa.
+> Las traducciones son un esfuerzo de la comunidad y pueden quedar desactualizadas. La versión en inglés ([README.md](../../README.md)) es la fuente autoritativa.
 
 La IA escribe tu código. Nadie escribe el *porqué*. A las tres semanas, tu historial de
 Git es un montón de decisiones que técnicamente son tuyas pero que nunca tomaste de
@@ -111,7 +111,7 @@ El estado honesto del proyecto — qué funciona, qué viene y qué todavía no 
   bloc de notas local por rama), y cómo se lee el bloque tras un squash-merge todavía se
   está afinando.
 
-La lista completa está en [Issues](../../issues) y [Discussions](../../discussions) —
+La lista completa está en [Issues](https://github.com/backthread/add-reasoning-to-prs/issues) y [Discussions](https://github.com/backthread/add-reasoning-to-prs/discussions) —
 pon 👍 a las limitaciones que te importan y subirán en la lista.
 
 ## Contribuir
@@ -120,9 +120,9 @@ Las contribuciones son bienvenidas — sobre todo correcciones de errores, texto
 prompt/guía más afinados, cobertura de casos límite y soporte para más agentes. Es una
 herramienta pequeña y de un solo propósito, y quiere seguir siéndolo, así que las peticiones
 de ampliar el alcance suelen declinarse (amablemente, con un motivo). Empieza por la
-[guía de contribución](CONTRIBUTING.md) y la etiqueta
-[`good first issue`](../../labels/good%20first%20issue); si no estás seguro de si una idea
-encaja, abre primero una [Discussion](../../discussions).
+[guía de contribución](../../CONTRIBUTING.md) y la etiqueta
+[`good first issue`](https://github.com/backthread/add-reasoning-to-prs/labels/good%20first%20issue); si no estás seguro de si una idea
+encaja, abre primero una [Discussion](https://github.com/backthread/add-reasoning-to-prs/discussions).
 
 ## Dale una estrella
 

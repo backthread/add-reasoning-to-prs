@@ -1,4 +1,4 @@
-[English](README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · **한국어** · [Español](README.es.md) · [Português](README.pt-BR.md) · [Русский](README.ru.md)
+[English](../../README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-TW.md) · [日本語](README.ja.md) · **한국어** · [Español](README.es.md) · [Português](README.pt-BR.md) · [Русский](README.ru.md)
 
 <div align="center">
 
@@ -8,14 +8,14 @@
 
 [![npm](https://img.shields.io/npm/v/add-reasoning-to-prs.svg)](https://www.npmjs.com/package/add-reasoning-to-prs)
 [![CI](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-8A63D2.svg)](https://docs.claude.com/en/docs/claude-code)
 
-![전후 비교: 제목이 「update auth flow」이고 설명이 비어 있는 PR과, 생성된 「결정 / 트레이드오프 / 가정 / 한계」 블록이 붙은 동일한 PR을 나란히 놓은 모습.](assets/demo.gif)
+![전후 비교: 제목이 「update auth flow」이고 설명이 비어 있는 PR과, 생성된 「결정 / 트레이드오프 / 가정 / 한계」 블록이 붙은 동일한 PR을 나란히 놓은 모습.](../../assets/demo.gif)
 
 </div>
 
-> 번역은 커뮤니티의 최선의 노력이며 최신 내용에 뒤처질 수 있습니다. 정본은 영어판([README.md](README.md))입니다.
+> 번역은 커뮤니티의 최선의 노력이며 최신 내용에 뒤처질 수 있습니다. 정본은 영어판([README.md](../../README.md))입니다.
 
 AI가 코드를 작성하지만, *이유* 는 아무도 기록하지 않습니다. 3주가 지나면 당신의 Git 이력은
 명목상으로는 당신의 것이지만 실제로는 스스로 내린 적 없는 결정들의 더미가 됩니다 — diff는
@@ -104,7 +104,7 @@ npx add-reasoning-to-prs
 - **알려진 공백:** 다중 세션 수집은 최선의 노력(로컬의 브랜치별 스크래치패드)이며, squash
   병합 후 블록이 어떻게 읽히는지는 아직 다듬는 중입니다.
 
-전체 목록은 [Issues](../../issues) 와 [Discussions](../../discussions) 에 있습니다 —
+전체 목록은 [Issues](https://github.com/backthread/add-reasoning-to-prs/issues) 와 [Discussions](https://github.com/backthread/add-reasoning-to-prs/discussions) 에 있습니다 —
 당신에게 중요한 한계에 👍 를 눌러 주면 목록에서 위로 올라갑니다.
 
 ## 기여하기
@@ -112,9 +112,9 @@ npx add-reasoning-to-prs
 기여를 환영합니다 — 특히 버그 수정, 더 날카로운 프롬프트/안내 문구, 엣지 케이스 커버리지,
 그리고 더 많은 에이전트 지원입니다. 이것은 작고 단일 목적의 도구이며 앞으로도 그렇게 유지할
 생각이므로, 범위를 넓히려는 요청은 대개(정중하게, 이유를 곁들여) 사양합니다.
-[기여 가이드](CONTRIBUTING.md)와 [`good first issue`](../../labels/good%20first%20issue) 라벨
+[기여 가이드](../../CONTRIBUTING.md)와 [`good first issue`](https://github.com/backthread/add-reasoning-to-prs/labels/good%20first%20issue) 라벨
 부터 시작하세요. 어떤 아이디어가 맞을지 확신이 서지 않는다면, 먼저
-[Discussion](../../discussions) 을 열어 주세요.
+[Discussion](https://github.com/backthread/add-reasoning-to-prs/discussions) 을 열어 주세요.
 
 ## 별을 눌러 주세요
 

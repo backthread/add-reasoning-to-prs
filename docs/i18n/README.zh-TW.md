@@ -1,4 +1,4 @@
-[English](README.md) · [简体中文](README.zh-CN.md) · **繁體中文** · [日本語](README.ja.md) · [한국어](README.ko.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Русский](README.ru.md)
+[English](../../README.md) · [简体中文](README.zh-CN.md) · **繁體中文** · [日本語](README.ja.md) · [한국어](README.ko.md) · [Español](README.es.md) · [Português](README.pt-BR.md) · [Русский](README.ru.md)
 
 <div align="center">
 
@@ -8,14 +8,14 @@
 
 [![npm](https://img.shields.io/npm/v/add-reasoning-to-prs.svg)](https://www.npmjs.com/package/add-reasoning-to-prs)
 [![CI](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml/badge.svg)](https://github.com/backthread/add-reasoning-to-prs/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](../../LICENSE)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-8A63D2.svg)](https://docs.claude.com/en/docs/claude-code)
 
-![前後對比：一個標題為「update auth flow」、描述為空的 PR，與同一個 PR 但已生成「決策 / 取捨 / 假設 / 限制」區塊的樣子並排。](assets/demo.gif)
+![前後對比：一個標題為「update auth flow」、描述為空的 PR，與同一個 PR 但已生成「決策 / 取捨 / 假設 / 限制」區塊的樣子並排。](../../assets/demo.gif)
 
 </div>
 
-> 翻譯由社群盡力維護，可能會落後。以英文版（[README.md](README.md)）為準。
+> 翻譯由社群盡力維護，可能會落後。以英文版（[README.md](../../README.md)）為準。
 
 AI 幫你寫程式碼，卻沒人寫下 *為什麼*。三週之後，你的 Git 歷史就成了一堆你名義上擁有、
 卻從未真正做過的決定 —— diff 告訴你 *改了什麼*，`git blame` 告訴你 *誰改的*，而背後的
@@ -97,15 +97,15 @@ npx add-reasoning-to-prs
 - **已知缺口：** 多工作階段收集是盡力而為（一個本地的、按分支劃分的暫存本），而區塊在 squash
   合併之後如何呈現仍在打磨中。
 
-完整清單見 [Issues](../../issues) 與 [Discussions](../../discussions) —— 給你在意的限制
+完整清單見 [Issues](https://github.com/backthread/add-reasoning-to-prs/issues) 與 [Discussions](https://github.com/backthread/add-reasoning-to-prs/discussions) —— 給你在意的限制
 點個 👍，它們就會在清單裡往上走。
 
 ## 參與貢獻
 
 歡迎貢獻 —— 尤其是錯誤修正、更精準的提示/引導文案、邊界情況涵蓋，以及對更多代理的支援。
 它是一個小而單一用途的工具，也打算一直如此，因此擴大範圍的請求通常會（客氣地、附上理由）
-被婉拒。請從[貢獻指南](CONTRIBUTING.md)和 [`good first issue`](../../labels/good%20first%20issue)
-標籤開始；如果你不確定某個想法是否合適，可以先開一個 [Discussion](../../discussions)。
+被婉拒。請從[貢獻指南](../../CONTRIBUTING.md)和 [`good first issue`](https://github.com/backthread/add-reasoning-to-prs/labels/good%20first%20issue)
+標籤開始；如果你不確定某個想法是否合適，可以先開一個 [Discussion](https://github.com/backthread/add-reasoning-to-prs/discussions)。
 
 ## 給它加星
 
