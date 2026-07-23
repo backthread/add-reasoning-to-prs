@@ -82,6 +82,9 @@ function exampleBlock(surface: Surface): string {
 /** Render accumulated (earlier-session) primitives as a plain, readable list. */
 function renderAccumulated(p: WhyPrimitives): string {
   const lines: string[] = [];
+  // Intentionally the four core PRIMITIVES only — the scratchpad never banks the PR-only
+  // `followups` (scratch.coercePrimitives loops PRIMITIVES), so an accumulated set can't
+  // carry one. If follow-ups ever become bankable, widen this to ALL_PRIMITIVES.
   for (const key of PRIMITIVES) {
     const items = (p[key] ?? []).filter(Boolean);
     if (items.length === 0) continue;
@@ -119,7 +122,7 @@ Recommended follow-ups (pull requests only):
 - Precision over coverage. If a careful reviewer could also reach the item by reading this diff, drop it. Most PRs have no follow-up. An empty section is the normal, correct outcome.
 - Exclude anything a normal code review, a linter, or CI already catches. This is not a review checklist.
 - Name the exact repository, file, or function only when it appeared in this session. Never guess a path. A wrong path is worse than none.
-- One risk has one home. If you already stated a risk in Assumptions or Limitations and ended it with a "Check: ..." action, move that action here and remove the "Check: ..." tail there, so the same action is not written twice.`
+- One risk has one home. Keep the inline "Check: ..." tail on a risk by default; only when that action is a cross-boundary follow-up you are promoting into this section, move it here and remove the "Check: ..." tail there — so the same action is never written twice.`
     : '';
   return `add-reasoning-to-prs: before ${c.moment}, add a short, forward-only "why" block to ${c.where}, then re-run the command.${earlier}
 

@@ -476,7 +476,7 @@ Recommended follow-ups (pull requests only):
 - Precision over coverage. If a careful reviewer could also reach the item by reading this diff, drop it. Most PRs have no follow-up. An empty section is the normal, correct outcome.
 - Exclude anything a normal code review, a linter, or CI already catches. This is not a review checklist.
 - Name the exact repository, file, or function only when it appeared in this session. Never guess a path. A wrong path is worse than none.
-- One risk has one home. If you already stated a risk in Assumptions or Limitations and ended it with a "Check: ..." action, move that action here and remove the "Check: ..." tail there, so the same action is not written twice.` : "";
+- One risk has one home. Keep the inline "Check: ..." tail on a risk by default; only when that action is a cross-boundary follow-up you are promoting into this section, move it here and remove the "Check: ..." tail there \u2014 so the same action is never written twice.` : "";
   return `add-reasoning-to-prs: before ${c.moment}, add a short, forward-only "why" block to ${c.where}, then re-run the command.${earlier}
 
 Write the block ONLY from what you actually decided in THIS session \u2014 never invent. Use only the sections that apply:
