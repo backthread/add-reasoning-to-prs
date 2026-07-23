@@ -2,7 +2,7 @@
   "name": "add-reasoning-to-prs",
   "displayName": "Add Reasoning to PRs",
   "description": "Writes a forward-only \"why\" block (decisions, trade-offs, assumptions, limitations) into your PR description or commit message at PR-create / direct-push time — composed by your own agent, in-session, with no account and no server round-trip.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": {
     "name": "Backthread"
   },
