@@ -46,6 +46,7 @@ git -C "$REPO" checkout -q -b feat/e2e
 OUT="$(runhook "$(payload 'gh pr create --title "Add widget"' s-pr)")"
 check "PR create denies (asks for a block)"        "$(decision "$OUT")" deny
 check "  PR guidance targets the PR description"   "$(jget "$OUT" '/pull request description/i.test(h.permissionDecisionReason||"")')" true
+check "  PR guidance teaches Recommended follow-ups" "$(jget "$OUT" '/Recommended follow-ups/.test(h.permissionDecisionReason||"")')" true
 check "  additionalContext present + == reason"    "$(jget "$OUT" 'String(!!h.additionalContext && h.additionalContext===h.permissionDecisionReason)')" true
 
 # 2. Idempotent re-run — a block is already present → no-op.
@@ -57,6 +58,7 @@ git -C "$REPO" checkout -q main
 OUT="$(runhook "$(payload 'git commit -m "hotfix"' s-commit)")"
 check "commit on default branch denies"            "$(decision "$OUT")" deny
 check "  commit guidance targets the message body" "$(jget "$OUT" '/commit message body/i.test(h.permissionDecisionReason||"")')" true
+check "  commit guidance omits Recommended follow-ups" "$(jget "$OUT" 'String(!/Recommended follow-ups/.test(h.permissionDecisionReason||""))')" true
 
 # 4. Feature-branch commit never denies (defers to PR-create).
 git -C "$REPO" checkout -q feat/e2e
