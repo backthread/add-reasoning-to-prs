@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // src/version.ts
-var VERSION = "0.2.1" ? "0.2.1" : readPackageVersion();
+var VERSION = "1.0.0" ? "1.0.0" : readPackageVersion();
 
 // src/stdin.ts
 async function readRawStdin(env = process.env, stdin = process.stdin) {
