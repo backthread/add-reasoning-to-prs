@@ -1,6 +1,6 @@
 {
   "name": "add-reasoning-to-prs",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "A Claude Code hook that writes a forward-only \"why\" block (decisions, trade-offs, assumptions, limitations) into your PR description or commit message at PR-create / direct-push time.",
   "license": "MIT",
   "author": "Backthread",
