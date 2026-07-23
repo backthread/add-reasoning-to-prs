@@ -44,3 +44,32 @@ test('empty primitives render nothing (leave-empty → omit the block)', () => {
   assert.equal(isEmptyBlock({ decisions: ['  ', ''] }), true);
   assert.equal(isEmptyBlock({ assumptions: ['real'] }), false);
 });
+
+test('Recommended follow-ups renders on the PR surface, after Limitations', () => {
+  const block = renderBlock('pr', {
+    limitations: ['left the backfill for a follow-up PR'],
+    followups: ['the mobile client still sends a legacy retryCount field the API no longer reads; drop it in apps/mobile/src/api.ts'],
+  });
+  assert.match(block, /\*\*Recommended follow-ups\*\*/);
+  assert.match(block, /- the mobile client still sends a legacy retryCount field/);
+  // Ordering: follow-ups come after limitations.
+  assert.ok(block.indexOf('Limitations') < block.indexOf('Recommended follow-ups'));
+});
+
+test('Recommended follow-ups NEVER renders on the commit surface', () => {
+  const block = renderBlock('commit', {
+    decisions: ['keep it local'],
+    followups: ['a cross-repo consequence a commit has no home for'],
+  });
+  assert.doesNotMatch(block, /Recommended follow-ups/);
+  assert.doesNotMatch(block, /cross-repo consequence/);
+  // The other sections still render normally.
+  assert.match(block, /Decisions:/);
+});
+
+test('a follow-up-only set renders on the PR surface but is empty on the commit surface', () => {
+  const followupOnly = { followups: ['applyDiscount duplicates the pricing branch order in the checkout service'] };
+  assert.match(renderBlock('pr', followupOnly), /\*\*Recommended follow-ups\*\*/);
+  assert.equal(renderBlock('commit', followupOnly), ''); // commit excludes follow-ups → nothing to render
+  assert.equal(isEmptyBlock(followupOnly), false); // but the set itself is not empty
+});

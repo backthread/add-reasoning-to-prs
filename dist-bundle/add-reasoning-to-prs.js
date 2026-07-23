@@ -261,6 +261,16 @@ var FILLER_PATTERNS = [
   /^(code\s+)?(quality|cleanup|refactor(ing)?|polish)\.?$/i,
   /^no\s+(notable\s+)?(decisions?|changes?|deliberation)\.?$/i
 ];
+var FOLLOWUP_FILLER_PATTERNS = [
+  /^(add|write)\s+(more\s+|extra\s+|unit\s+|integration\s+)?tests?\.?$/i,
+  /^(add|improve|better|more)\s+(the\s+)?(error[\s-]?handling|logging|validation|documentation|docs|comments?|monitoring|observability|metrics|telemetry|type\s+safety|test\s+coverage|coverage)\.?$/i,
+  /^update\s+(the\s+)?(docs|documentation|readme)\.?$/i,
+  /^(consider\s+|maybe\s+)?refactor(ing)?(\s+(this|it|later))?\.?$/i,
+  /^(optimi[sz]e|clean\s*up|polish|revisit|monitor|review|simplify)(\s+(this|it|later|performance))?\.?$/i,
+  /^(handle|cover)\s+(the\s+)?(remaining\s+)?edge\s+cases?\.?$/i,
+  /^(add|set\s*up)\s+(monitoring|alerting|observability|metrics)\.?$/i,
+  /^follow[\s-]?ups?\.?$/i
+];
 function debullet(line) {
   return line.replace(/^\s*[-*]\s*/, "").trim();
 }
@@ -269,12 +279,16 @@ function isPadding(line) {
   if (t.length === 0) return true;
   return FILLER_PATTERNS.some((re) => re.test(t));
 }
-function scrubLines(lines) {
+function isPaddingFollowup(line) {
+  if (isPadding(line)) return true;
+  return FOLLOWUP_FILLER_PATTERNS.some((re) => re.test(debullet(line)));
+}
+function scrubLines(lines, isFiller = isPadding) {
   const seen = /* @__PURE__ */ new Set();
   const out = [];
   for (const raw of Array.isArray(lines) ? lines : []) {
     if (typeof raw !== "string") continue;
-    if (isPadding(raw)) continue;
+    if (isFiller(raw)) continue;
     const key = debullet(raw).toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
@@ -282,23 +296,34 @@ function scrubLines(lines) {
   }
   return out;
 }
+function scrubFollowups(lines) {
+  return scrubLines(lines, isPaddingFollowup);
+}
 function scrubPrimitives(p) {
-  return {
+  const out = {
     decisions: scrubLines(p.decisions ?? []),
     assumptions: scrubLines(p.assumptions ?? []),
     tradeoffs: scrubLines(p.tradeoffs ?? []),
     limitations: scrubLines(p.limitations ?? [])
   };
+  if (p.followups !== void 0) out.followups = scrubFollowups(p.followups ?? []);
+  return out;
 }
 
 // src/template.ts
 var PRIMITIVES = ["decisions", "assumptions", "tradeoffs", "limitations"];
+var PR_ONLY_PRIMITIVES = ["followups"];
+var ALL_PRIMITIVES = [...PRIMITIVES, ...PR_ONLY_PRIMITIVES];
 var HEADINGS = {
   decisions: "Decisions",
   assumptions: "Assumptions",
   tradeoffs: "Trade-offs",
-  limitations: "Limitations"
+  limitations: "Limitations",
+  followups: "Recommended follow-ups"
 };
+function primitivesForSurface(surface) {
+  return surface === "pr" ? ALL_PRIMITIVES : PRIMITIVES;
+}
 function delimiters(surface) {
   return surface === "pr" ? { open: PR_MARKER_OPEN, close: PR_MARKER_CLOSE } : { open: COMMIT_MARKER_OPEN, close: COMMIT_MARKER_CLOSE };
 }
@@ -307,14 +332,15 @@ function clean(items) {
   return items.map((s) => typeof s === "string" ? s.trim() : "").filter(Boolean);
 }
 function isEmptyBlock(p) {
-  return PRIMITIVES.every((k) => clean(p[k]).length === 0);
+  return ALL_PRIMITIVES.every((k) => clean(p[k]).length === 0);
 }
 function renderBlock(surface, p) {
-  if (isEmptyBlock(p)) return "";
+  const keys = primitivesForSurface(surface);
+  if (keys.every((k) => clean(p[k]).length === 0)) return "";
   const { open, close } = delimiters(surface);
   const isPr = surface === "pr";
   const lines = [open];
-  for (const key of PRIMITIVES) {
+  for (const key of keys) {
     const items = clean(p[key]);
     if (items.length === 0) continue;
     lines.push(isPr ? `**${HEADINGS[key]}**` : `${HEADINGS[key]}:`);
@@ -413,7 +439,9 @@ function exampleBlock(surface) {
     decisions: placeholder,
     assumptions: placeholder,
     tradeoffs: placeholder,
-    limitations: placeholder
+    limitations: placeholder,
+    // Renders only on the PR surface (renderBlock drops it on the commit surface).
+    followups: placeholder
   });
   const body = rendered.slice(open.length, rendered.length - close.length).trim();
   return [open, attributionHeader(surface), "", body, "", attributionFooter(surface), close].join(
@@ -432,12 +460,23 @@ function renderAccumulated(p) {
 }
 function buildGuidance(surface, accumulated) {
   const c = surfaceCopy(surface);
+  const isPr = surface === "pr";
   const earlier = accumulated && !isEmptyBlock(accumulated) ? `
 
 Earlier work on this branch (possibly a different session) already recorded these \u2014 fold the still-relevant points into the block instead of pasting them, and drop anything now stale:
 
 ${renderAccumulated(accumulated)}
 ` : "";
+  const followupsBullet = isPr ? `
+- Recommended follow-ups \u2014 a concrete next step your reasoning surfaced that a reviewer could NOT get from this diff alone. Most PRs have none.` : "";
+  const followupsGuidance = isPr ? `
+
+Recommended follow-ups (pull requests only):
+- Add this section ONLY for a follow-up that your in-session reasoning surfaced AND a reviewer could not see from this PR's diff alone. Prefer a consequence in another file, another repository, or another service.
+- Precision over coverage. If a careful reviewer could also reach the item by reading this diff, drop it. Most PRs have no follow-up. An empty section is the normal, correct outcome.
+- Exclude anything a normal code review, a linter, or CI already catches. This is not a review checklist.
+- Name the exact repository, file, or function only when it appeared in this session. Never guess a path. A wrong path is worse than none.
+- One risk has one home. If you already stated a risk in Assumptions or Limitations and ended it with a "Check: ..." action, move that action here and remove the "Check: ..." tail there, so the same action is not written twice.` : "";
   return `add-reasoning-to-prs: before ${c.moment}, add a short, forward-only "why" block to ${c.where}, then re-run the command.${earlier}
 
 Write the block ONLY from what you actually decided in THIS session \u2014 never invent. Use only the sections that apply:
@@ -445,7 +484,7 @@ Write the block ONLY from what you actually decided in THIS session \u2014 never
 - Decisions \u2014 the choices you made and why (not what changed; the diff already shows that).
 - Assumptions \u2014 what you took as given that a reviewer should confirm.
 - Trade-offs \u2014 what you knowingly gave up, and the option you rejected.
-- Limitations \u2014 known gaps or risks you are deliberately leaving.
+- Limitations \u2014 known gaps or risks you are deliberately leaving.${followupsBullet}
 
 How much to write:
 - Size the block to the change. Most PRs need one to three lines, not four full sections. A small or mechanical PR gets one line, or none.
@@ -457,7 +496,7 @@ Be honest:
 - Forward-only: capture what the diff can't show \u2014 the why, and the risks knowingly taken. Never summarize the changes.
 - Every line must trace to a real decision in this session. If the reason was never stated, drop the line \u2014 do not guess it.
 - Never restate the diff ("added X", "refactored Y"), and never pad with filler ("improves code quality", "various cleanups").
-- Write a caveat as a claim plus its silent consequence: "Assumes X; if X is wrong, Y breaks." A caveat with no named consequence is filler \u2014 cut it. End a risk with a short action, e.g. "Check: review both lists".
+- Write a caveat as a claim plus its silent consequence: "Assumes X; if X is wrong, Y breaks." A caveat with no named consequence is filler \u2014 cut it. End a risk with a short action, e.g. "Check: review both lists".${followupsGuidance}
 
 Write it plainly \u2014 the reviewer may not be a native English speaker:
 - One idea per sentence; prefer several short sentences over one long one with stacked clauses.
@@ -466,7 +505,7 @@ Write it plainly \u2014 the reviewer may not be a native English speaker:
 - Plain, factual, senior-engineer voice. No self-praise or marketing words (no "elegant", "robust", "clean", "seamless", "improves quality"). Say only what you decided and what is risky.
 
 Format:
-- Keep the four headings in this order; include only the non-empty ones.
+- Keep the headings in the order shown; include only the non-empty ones.
 - Wrap the block EXACTLY between the two markers below so it is detected and left untouched on later runs.
 - Add a visible attribution INSIDE the markers, scaled to the block. A substantial block uses the full attribution shown below (the heading/opening line plus the small closing note); a one- or two-line block uses only a single compact attribution line. Never a banner.
 

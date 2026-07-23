@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isPadding, scrubLines, scrubPrimitives } from './critique.js';
+import { isPadding, isPaddingFollowup, scrubLines, scrubFollowups, scrubPrimitives } from './critique.js';
 
 test('drops padded/filler lines but keeps genuine deliberation (the fixture)', () => {
   const input = [
@@ -67,4 +67,44 @@ test('scrubPrimitives cleans every section and leaves empties empty', () => {
     tradeoffs: [],
     limitations: ['Skipped the migration for the follow-up PR'],
   });
+  // No followups key was supplied → none is added (keeps the scratchpad JSON clean).
+  assert.ok(!('followups' in out));
+});
+
+test('scrubFollowups drops generic to-dos at the stricter bar but keeps concrete cross-boundary items', () => {
+  const kept = 'The mobile and web clients still send a legacy retryCount field the API now ignores; drop it in apps/mobile/src/api.ts';
+  const out = scrubFollowups([
+    'Add tests',
+    'consider refactoring later',
+    'improve error handling',
+    'update the docs',
+    'handle edge cases',
+    'add monitoring',
+    'follow-up',
+    kept,
+  ]);
+  assert.deepEqual(out, [kept]);
+});
+
+test('the stricter follow-up bar is a SUPERSET of the base bar', () => {
+  // Generic to-dos are padding for follow-ups but NOT for the base primitives.
+  assert.equal(isPaddingFollowup('Add tests'), true);
+  assert.equal(isPadding('Add tests'), false);
+  assert.equal(isPaddingFollowup('consider refactoring later'), true);
+  // A concrete item that merely starts with a generic verb survives both.
+  const concrete = 'Add tests for the cross-service billing webhook contract in packages/billing/webhook.ts';
+  assert.equal(isPaddingFollowup(concrete), false);
+  // Base filler is still filler for follow-ups.
+  assert.equal(isPaddingFollowup('various improvements'), true);
+});
+
+test('scrubPrimitives applies the stricter bar to followups only', () => {
+  const out = scrubPrimitives({
+    decisions: ['Add tests'], // NOT dropped — the base bar keeps change-verb lines
+    followups: ['Add tests', 'applyDiscount duplicates the pricing branch order in the checkout service'],
+  });
+  assert.deepEqual(out.decisions, ['Add tests']);
+  assert.deepEqual(out.followups, [
+    'applyDiscount duplicates the pricing branch order in the checkout service',
+  ]);
 });

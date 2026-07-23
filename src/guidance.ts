@@ -68,6 +68,8 @@ function exampleBlock(surface: Surface): string {
     assumptions: placeholder,
     tradeoffs: placeholder,
     limitations: placeholder,
+    // Renders only on the PR surface (renderBlock drops it on the commit surface).
+    followups: placeholder,
   });
   // renderBlock wraps the body in the markers; lift the body out and re-wrap it with the
   // attribution inside the same markers.
@@ -99,10 +101,26 @@ function renderAccumulated(p: WhyPrimitives): string {
  */
 export function buildGuidance(surface: Surface, accumulated?: WhyPrimitives): string {
   const c = surfaceCopy(surface);
+  const isPr = surface === 'pr';
   const earlier =
     accumulated && !isEmptyBlock(accumulated)
       ? `\n\nEarlier work on this branch (possibly a different session) already recorded these — fold the still-relevant points into the block instead of pasting them, and drop anything now stale:\n\n${renderAccumulated(accumulated)}\n`
       : '';
+  // The Recommended-follow-ups primitive renders on the PR surface only. A commit message is
+  // immutable once pushed and has no backlog home, so a forward-looking to-do has no place there.
+  const followupsBullet = isPr
+    ? `\n- Recommended follow-ups — a concrete next step your reasoning surfaced that a reviewer could NOT get from this diff alone. Most PRs have none.`
+    : '';
+  const followupsGuidance = isPr
+    ? `
+
+Recommended follow-ups (pull requests only):
+- Add this section ONLY for a follow-up that your in-session reasoning surfaced AND a reviewer could not see from this PR's diff alone. Prefer a consequence in another file, another repository, or another service.
+- Precision over coverage. If a careful reviewer could also reach the item by reading this diff, drop it. Most PRs have no follow-up. An empty section is the normal, correct outcome.
+- Exclude anything a normal code review, a linter, or CI already catches. This is not a review checklist.
+- Name the exact repository, file, or function only when it appeared in this session. Never guess a path. A wrong path is worse than none.
+- One risk has one home. If you already stated a risk in Assumptions or Limitations and ended it with a "Check: ..." action, move that action here and remove the "Check: ..." tail there, so the same action is not written twice.`
+    : '';
   return `add-reasoning-to-prs: before ${c.moment}, add a short, forward-only "why" block to ${c.where}, then re-run the command.${earlier}
 
 Write the block ONLY from what you actually decided in THIS session — never invent. Use only the sections that apply:
@@ -110,7 +128,7 @@ Write the block ONLY from what you actually decided in THIS session — never in
 - Decisions — the choices you made and why (not what changed; the diff already shows that).
 - Assumptions — what you took as given that a reviewer should confirm.
 - Trade-offs — what you knowingly gave up, and the option you rejected.
-- Limitations — known gaps or risks you are deliberately leaving.
+- Limitations — known gaps or risks you are deliberately leaving.${followupsBullet}
 
 How much to write:
 - Size the block to the change. Most PRs need one to three lines, not four full sections. A small or mechanical PR gets one line, or none.
@@ -122,7 +140,7 @@ Be honest:
 - Forward-only: capture what the diff can't show — the why, and the risks knowingly taken. Never summarize the changes.
 - Every line must trace to a real decision in this session. If the reason was never stated, drop the line — do not guess it.
 - Never restate the diff ("added X", "refactored Y"), and never pad with filler ("improves code quality", "various cleanups").
-- Write a caveat as a claim plus its silent consequence: "Assumes X; if X is wrong, Y breaks." A caveat with no named consequence is filler — cut it. End a risk with a short action, e.g. "Check: review both lists".
+- Write a caveat as a claim plus its silent consequence: "Assumes X; if X is wrong, Y breaks." A caveat with no named consequence is filler — cut it. End a risk with a short action, e.g. "Check: review both lists".${followupsGuidance}
 
 Write it plainly — the reviewer may not be a native English speaker:
 - One idea per sentence; prefer several short sentences over one long one with stacked clauses.
@@ -131,7 +149,7 @@ Write it plainly — the reviewer may not be a native English speaker:
 - Plain, factual, senior-engineer voice. No self-praise or marketing words (no "elegant", "robust", "clean", "seamless", "improves quality"). Say only what you decided and what is risky.
 
 Format:
-- Keep the four headings in this order; include only the non-empty ones.
+- Keep the headings in the order shown; include only the non-empty ones.
 - Wrap the block EXACTLY between the two markers below so it is detected and left untouched on later runs.
 - Add a visible attribution INSIDE the markers, scaled to the block. A substantial block uses the full attribution shown below (the heading/opening line plus the small closing note); a one- or two-line block uses only a single compact attribution line. Never a banner.
 

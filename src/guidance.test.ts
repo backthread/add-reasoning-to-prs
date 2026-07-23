@@ -52,6 +52,31 @@ test('guidance carries the restraint, insight, no-self-praise, and attribution r
   assert.match(pr, /backthread\/add-reasoning-to-prs/); // attributed to the package
 });
 
+test('PR guidance teaches Recommended follow-ups: inclusion test, precision bar, de-dup rule', () => {
+  const pr = buildGuidance('pr');
+  assert.match(pr, /Recommended follow-ups/);
+  // Inclusion test: reasoning-surfaced AND not derivable from this diff.
+  assert.match(pr, /could not see from this PR's diff alone/i);
+  // Precision over coverage + empty is correct.
+  assert.match(pr, /Precision over coverage/i);
+  assert.match(pr, /empty section is the normal, correct outcome/i);
+  // Not a review/lint/CI lane.
+  assert.match(pr, /linter, or CI already catches/i);
+  // Never guess a path.
+  assert.match(pr, /Never guess a path/i);
+  // De-dup with the Check: tail.
+  assert.match(pr, /One risk has one home/i);
+  assert.match(pr, /remove the "Check: \.\.\." tail/i);
+  // The example block shows the heading on the PR surface.
+  assert.match(pr, /\*\*Recommended follow-ups\*\*/);
+});
+
+test('commit guidance NEVER mentions Recommended follow-ups (PR-only primitive)', () => {
+  const commit = buildGuidance('commit');
+  assert.doesNotMatch(commit, /Recommended follow-ups/i);
+  assert.doesNotMatch(commit, /Precision over coverage/i);
+});
+
 test('commit-surface attribution is plain text (no markdown heading, HTML, or links)', () => {
   const commit = buildGuidance('commit');
   assert.match(commit, /written in-session via backthread\/add-reasoning-to-prs/);
