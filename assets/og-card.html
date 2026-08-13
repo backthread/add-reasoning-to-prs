@@ -41,48 +41,50 @@
   .glow{position:absolute;right:-120px;top:-120px;width:480px;height:480px;border-radius:50%;
     background:radial-gradient(circle,rgba(203,166,247,.14),transparent 70%);}
 
-  /* everything below lives inside the centered 1000x500 safe box, with a margin buffer:
-     safe box = x:[140,1140] y:[70,570]; this wrapper sits at x:[170,1110] y:[96,544]. */
-  .safe{position:absolute;left:170px;top:96px;width:940px;height:448px;
+  /* everything below lives inside the centered 1000x500 safe box: x:[140,1140] y:[70,570].
+     This wrapper's top is deliberately just inside that edge (buffer, not the height —
+     the box below is NOT overflow:hidden, so its own height is decorative, not a clip.
+     Containment is verified by rendering + cropping the actual PNG, not by this number. */
+  .safe{position:absolute;left:170px;top:76px;width:940px;
     display:flex;flex-direction:column;align-items:center;text-align:center}
 
   .kicker{font-size:18px;font-weight:700;color:var(--mauve);letter-spacing:.4px}
   .kicker .sep{color:var(--faint);font-weight:500;margin:0 8px}
   .kicker .tag{color:var(--dim);font-weight:500}
 
-  h1{font-size:52px;line-height:1.14;font-weight:800;letter-spacing:-.5px;margin-top:14px}
+  h1{font-size:52px;line-height:1.08;font-weight:800;letter-spacing:-.5px;margin-top:10px}
   .chip{display:inline-block;border-radius:8px;padding:1px 12px;color:#12141d;font-weight:800;background:var(--yellow)}
   h1 .coral{color:var(--coraltxt)}
 
-  .sub{font-size:19px;color:var(--dim);margin-top:14px;font-weight:500}
+  .sub{font-size:19px;color:var(--dim);margin-top:10px;font-weight:500}
   .sub .g{color:var(--green);font-weight:700}
 
   /* the before/after proof row */
-  .proof{margin-top:26px;display:flex;align-items:stretch;gap:16px;width:100%;justify-content:center}
+  .proof{margin-top:16px;display:flex;align-items:stretch;gap:16px;width:100%;justify-content:center}
 
   .before{width:250px;flex:0 0 250px;background:var(--panel2);border:1px solid var(--line);
-    border-radius:14px;padding:18px 20px;text-align:left;display:flex;flex-direction:column}
+    border-radius:14px;padding:13px 20px;text-align:left;display:flex;flex-direction:column}
   .after{width:600px;flex:0 0 600px;background:var(--panel);border:1px solid var(--line);
-    border-radius:14px;padding:18px 22px;text-align:left;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+    border-radius:14px;padding:13px 22px;text-align:left;box-shadow:0 20px 50px rgba(0,0,0,.35)}
 
   .badge{display:inline-block;border-radius:6px;padding:2px 10px;font-size:13px;font-weight:800;color:#12141d}
   .badge.b{background:var(--coral)}
   .badge.a{background:var(--green)}
 
-  .prtitle{font-size:18px;font-weight:700;margin-top:12px}
+  .prtitle{font-size:18px;font-weight:700;margin-top:9px}
   .before .prtitle{color:var(--dim)}
-  .empty{font-size:15px;color:var(--coraltxt);margin-top:8px;font-weight:600}
+  .empty{font-size:15px;color:var(--coraltxt);margin-top:6px;font-weight:600}
   .emptybar{margin-top:auto;height:8px;border-radius:4px;background:repeating-linear-gradient(90deg,var(--line) 0 10px,transparent 10px 16px)}
 
-  .why{font-size:15px;font-weight:800;color:var(--green);margin-top:12px}
-  .rows{margin-top:9px;display:flex;flex-direction:column;gap:8px}
+  .why{font-size:15px;font-weight:800;color:var(--green);margin-top:9px}
+  .rows{margin-top:7px;display:flex;flex-direction:column;gap:6px}
   .row{display:flex;gap:8px;align-items:baseline}
   .row .lab{font-size:14px;font-weight:800;color:var(--cyan);flex:0 0 108px}
   .row .txt{font-size:14px;color:var(--dim);font-weight:500}
 
-  .install{margin-top:26px;display:flex;align-items:center;gap:14px}
+  .install{margin-top:16px;display:flex;align-items:center;gap:14px}
   .cmd{display:inline-flex;align-items:center;gap:10px;background:#0d0f16;border:1px solid var(--line);
-    border-radius:10px;padding:10px 16px;font-size:19px;font-weight:700}
+    border-radius:10px;padding:9px 16px;font-size:19px;font-weight:700}
   .cmd .p{color:var(--green)}
   .cmd .npx{color:var(--mauve)}
   .meta{font-size:14px;color:var(--faint);font-weight:500}
