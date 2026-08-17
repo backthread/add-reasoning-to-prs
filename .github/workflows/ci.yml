@@ -1,7 +1,37 @@
 # CI — typecheck + test on every PR and push to main, verify the committed self-contained
-# bundle is in sync with src, and hold the supply-chain floor for a widely-`npx`'d
-# package: a vulnerability gate, a lockfile-integrity gate, and a guard that the release
-# keeps npm provenance on.
+# bundle is in sync with src, drive the built bundle end-to-end, and hold the supply-chain
+# floor for a widely-`npx`'d package: a vulnerability gate, a lockfile-integrity gate, and
+# a guard that the release keeps npm provenance on.
+#
+# EVERY GATE IS ITS OWN JOB, ON PURPOSE. These used to be sequential steps in one job, so the
+# FIRST failure skipped every later step. The vulnerability gate sat fourth, ahead of typecheck,
+# the tests, the bundle-sync check and the E2E dogfood gate — so a single dev-only advisory
+# anywhere in the tree would have meant a PR got NO signal about its own change, and the E2E gate,
+# being last, had the most to lose. The advisory tree is clean today, which made that latent rather
+# than harmless: it is one dependabot bump away from a total blackout. The sibling monorepo hit
+# exactly this and measured it — 9 of 12 red runs there never ran the tests at all.
+#
+# Each job carries `timeout-minutes` because a hung gate is the one failure mode that costs more
+# than a red one: GitHub's default is 6 hours of runner time with no report at the end.
+#
+# WHY THE TEST SCRIPT PASSES `--experimental-test-isolation=none`. By default `node --test` forks
+# one child process per test file, and each child reports back by writing v8-serialized frames to
+# its STDOUT; the parent rebuilds the report by sniffing that stream for a two-byte frame header.
+# That framing is fragile, and when it goes wrong the parent reports
+# `uncaughtException: Unable to deserialize cloned data due to invalid or unsupported version.` at
+# `#processRawBuffer (node:internal/test_runner/runner)` against an arbitrary test file whose own
+# subtests all passed — a red run, an innocent file, and nothing learned about the diff. Measured
+# in the sibling monorepo on a runner, 10 interleaved runs per arm: the forked mode failed 3/10,
+# every one that error and none an assertion; in-process 0/10. It never reproduced on a developer
+# machine. In-process there is no child, no pipe and no framing, so the failure mode stops existing
+# rather than getting rarer. `release.yml` runs the same `npm test` before `npm publish`, which is
+# why the flag lives in the package script and not here.
+#
+# WHAT THE FLAG COSTS, measured rather than assumed: a module-level `throw` is red in both modes
+# only if it precedes the file's FIRST test registration. After that, in-process exits 0 with
+# `# fail 0` and silently drops the remaining tests from the count. The pass-count floor in the
+# test job is the mitigation — the case where tests actually stop running drops the count, so the
+# floor turns it back into a red.
 #
 # GitHub Actions are PINNED BY COMMIT SHA (not a floating tag) so a compromised/retagged
 # action can't silently run in CI; Dependabot (.github/dependabot.yml) proposes bumps.
@@ -13,46 +43,152 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  # The checks that need no dependency install, so no advisory and no drifted lockfile can stop
+  # them running. One step with `|| rc=1` rather than two steps, because steps in a job are
+  # sequential and would reproduce the same blackout in miniature.
+  guards:
+    name: Lockfile + release guards
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Every guard runs, then the job fails if any of them did
+        run: |
+          rc=0
+
+          # Lockfile integrity: it must be present, and `npm ci` (in every other job) hard-fails
+          # if it's out of sync with package.json — so an un-committed dependency change can't
+          # slip through.
+          echo "::group::Lockfile present"
+          test -f package-lock.json \
+            || { echo "::error::package-lock.json is missing — commit it (npm install)."; rc=1; }
+          echo "::endgroup::"
+
+          # Every `npm publish` must keep provenance on, so each published package carries a
+          # verifiable, tamper-evident build attestation. This was a one-line grep until it was
+          # measured: `npm publish[^#]*--provenance` forbids a `#` BETWEEN the tokens but not
+          # BEFORE them, and release.yml carries a comment reading "`npm publish --provenance`
+          # (its bundled libnpmpublish can't resolve sigstore)". That comment satisfied the
+          # pattern unconditionally, so the check COULD NOT FAIL — verified by deleting
+          # --provenance from the real publish step and watching it stay green. The same defect
+          # was found and fixed in the sibling monorepo; scripts/check-provenance.mjs is the
+          # shared shape, and it checks every workflow rather than the ones we remembered to glob.
+          echo "::group::Every npm publish keeps provenance on"
+          node scripts/check-provenance.mjs || rc=1
+          echo "::endgroup::"
+
+          exit $rc
+
+  # Its own job: an advisory is a fact about the dependency tree, not about the diff, and it must
+  # never again be the reason the diff went unchecked.
+  audit:
+    name: Vulnerability gate (npm audit, high+)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
-      # Lockfile integrity: it must be present, and `npm ci` (below) hard-fails if it's
-      # out of sync with package.json — so an un-committed dependency change can't slip
-      # through.
-      - name: Lockfile present
-        run: test -f package-lock.json || { echo "::error::package-lock.json is missing — commit it (npm install)."; exit 1; }
+      - run: npm audit --audit-level=high
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
       - name: Install (npm ci — fails on a drifted lockfile)
         run: npm ci
-      # Vulnerability gate: fail the build on a HIGH+ advisory anywhere in the tree.
-      - name: Vulnerability gate (npm audit, high+)
-        run: npm audit --audit-level=high
-      - name: Typecheck
-        run: npm run typecheck
-      # `npm test` runs the unit suite + `npm run build` + `npm run smoke`, and the smoke
-      # step regenerates dist-bundle/add-reasoning-to-prs.js — so the sync check below
-      # compares the committed bundle against a fresh build.
-      - name: Test
-        run: npm test
-      # The Claude Code plugin is cloned from git with NO build step on install, so the
-      # COMMITTED bundle must equal a fresh build. `npm test` just rebuilt it; fail if it
-      # differs from what's committed (esbuild is deterministic for the pinned version).
-      - name: Committed bundle is in sync with src
-        run: git diff --exit-code dist-bundle/add-reasoning-to-prs.js
-      # End-to-end dogfood gate: drive the built bundle through every path (PR + direct-push
-      # surfaces, idempotency, empty/anti-loop cap, off-switch, skip, scratchpad, fail-open,
-      # never-hard-blocks) against a throwaway git repo.
-      - name: E2E dogfood validation
-        run: npm run e2e
-      # Regression guard: every release workflow must keep npm build provenance on, so
-      # each published package always carries a verifiable, tamper-evident attestation.
-      - name: Releases keep npm provenance on
+      - run: npm run typecheck
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install (npm ci — fails on a drifted lockfile)
+        run: npm ci
+      # `tee` + a pass-count FLOOR, not just the exit code. `node --test` exits 0 when its glob
+      # matches nothing, and in-process isolation swallows a module-level throw once any test in
+      # that file has registered — either way the job would go green having run less than it
+      # should. `pipefail` so `tee` cannot mask npm's exit status.
+      - name: npm test, then hold it to its pass-count floor
+        shell: bash
         run: |
-          for wf in .github/workflows/release*.yml; do
-            grep -Eq 'npm publish[^#]*--provenance' "$wf" \
-              || { echo "::error::$wf's npm publish must keep --provenance"; exit 1; }
-          done
+          set -o pipefail
+          npm test 2>&1 | tee test-output.txt
+          node scripts/check-test-floor.mjs --min=76 test-output.txt
+      # PROVE THE FLOOR CAN FAIL, on this runner, on this commit — both of its paths. The count
+      # path is the one people picture; the FAIL-CLOSED path matters more, because if a runner ever
+      # renames its `# pass N` summary the only thing between that and a green tick is this script
+      # choosing to exit 1 on a log it could not parse. `if: success()` deliberately: this exists
+      # to catch a run that went GREEN having executed too little, so on an already-red run it
+      # could only add a second error a layer from the cause.
+      - name: Self-test — the floor can fail
+        if: success()
+        shell: bash
+        run: |
+          if node scripts/check-test-floor.mjs --min=999999 test-output.txt; then
+            echo "::error::the floor passed against an impossible minimum, so it is vacuous"
+            exit 1
+          fi
+          echo "ok — the floor rejects a count below its minimum"
+          : > empty.txt
+          if node scripts/check-test-floor.mjs --min=1 empty.txt; then
+            echo "::error::the floor passed on a log with NO summary — it must fail closed"
+            exit 1
+          fi
+          echo "ok — a log with no summary is a failure, not a pass"
+
+  # The Claude Code plugin is cloned from git with NO build step on install, so the COMMITTED
+  # bundle must equal a fresh build (esbuild is deterministic for the pinned version). This used to
+  # piggyback on `npm test` having rebuilt the bundle, which meant a single failing test also
+  # silenced it; it now builds the bundle itself and answers only for the sync question.
+  bundle-sync:
+    name: Committed bundle is in sync with src
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install (npm ci — fails on a drifted lockfile)
+        run: npm ci
+      - name: Rebuild the bundle from src
+        run: npm run bundle
+      - run: git diff --exit-code dist-bundle/add-reasoning-to-prs.js
+
+  # End-to-end dogfood gate: drive the built bundle through every path (PR + direct-push surfaces,
+  # idempotency, empty/anti-loop cap, off-switch, skip, scratchpad, fail-open, never-hard-blocks)
+  # against a throwaway git repo. It was the LAST step of the old single job, so it was the first
+  # thing lost to any earlier failure — and it is the only gate that exercises the artefact users
+  # actually run.
+  e2e:
+    name: E2E dogfood validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install (npm ci — fails on a drifted lockfile)
+        run: npm ci
+      - run: npm run e2e
