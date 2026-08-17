@@ -8,14 +8,30 @@
   nothing load-bearing is allowed to live in the outer 140px (sides) / 70px (top-bottom).
   Only the decorative full-bleed background and top accent bar are allowed past it.
 
-  Render (needs Google Chrome + JetBrains Mono installed), from the repo root:
-    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
-      --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
-      --window-size=1280,640 --screenshot=assets/og-social-preview.png \
-      "file://$PWD/assets/og-card.html"
+  Render it from the repo root with:
+
+    ./assets/render-og.sh
+
+  which pins the window size and then asserts the three things that otherwise break
+  silently: JetBrains Mono is really installed (a fallback font changes every line
+  length), the PNG is exactly 1280x640, and no ink escapes the safe area above —
+  measured on rendered pixels, because this card's CSS height is not a clip.
 
   Then upload assets/og-social-preview.png in GitHub -> Settings -> General ->
-  Social preview. GitHub has no API for the social preview, so this upload is manual.
+  Social preview. There is no REST or GraphQL API for it, so that step is a browser
+  step — and it is the step that gets forgotten, so VERIFY IT FROM OUTSIDE GITHUB:
+
+    curl -sL https://github.com/backthread/add-reasoning-to-prs | grep -o 'og:image[^>]*'
+
+  A live custom card gives a repository-images.githubusercontent.com URL. An
+  opengraph.githubassets.com URL means GitHub's auto-generated fallback is still what
+  every X / Slack / LinkedIn link unfurls, and this file is decoration.
+
+  Legibility, measured by downscaling the render: unfurls render this at roughly
+  500px (X, LinkedIn), 360px (Slack) and 250px (small thumbnails). The 52px headline
+  and the repo name read at all three; the proof-card body copy is legible at 500px
+  and deliberately becomes texture below that, so the before/after contrast rides on
+  layout and colour, not on paragraph text. Anything load-bearing goes in the headline.
 -->
 <html>
 <head>
