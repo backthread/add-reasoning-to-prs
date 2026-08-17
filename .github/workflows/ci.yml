@@ -130,25 +130,27 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm test 2>&1 | tee test-output.txt
-          node scripts/check-test-floor.mjs --min=76 test-output.txt
+          npm test 2>&1 | tee "$RUNNER_TEMP/test-output.txt"
+          node scripts/check-test-floor.mjs --min=76 "$RUNNER_TEMP/test-output.txt"
       # PROVE THE FLOOR CAN FAIL, on this runner, on this commit — both of its paths. The count
       # path is the one people picture; the FAIL-CLOSED path matters more, because if a runner ever
       # renames its `# pass N` summary the only thing between that and a green tick is this script
-      # choosing to exit 1 on a log it could not parse. `if: success()` deliberately: this exists
-      # to catch a run that went GREEN having executed too little, so on an already-red run it
-      # could only add a second error a layer from the cause.
+      # choosing to exit 1 on a log it could not parse. Scratch files live in `$RUNNER_TEMP`,
+      # outside the checkout, so they can never become a phantom diff for a working-tree check.
+      # `if: success()` deliberately: this exists to catch a run that went GREEN having executed
+      # too little, so on an already-red run it could only add a second error a layer from the
+      # cause.
       - name: Self-test — the floor can fail
         if: success()
         shell: bash
         run: |
-          if node scripts/check-test-floor.mjs --min=999999 test-output.txt; then
+          if node scripts/check-test-floor.mjs --min=999999 "$RUNNER_TEMP/test-output.txt"; then
             echo "::error::the floor passed against an impossible minimum, so it is vacuous"
             exit 1
           fi
           echo "ok — the floor rejects a count below its minimum"
-          : > empty.txt
-          if node scripts/check-test-floor.mjs --min=1 empty.txt; then
+          : > "$RUNNER_TEMP/empty.txt"
+          if node scripts/check-test-floor.mjs --min=1 "$RUNNER_TEMP/empty.txt"; then
             echo "::error::the floor passed on a log with NO summary — it must fail closed"
             exit 1
           fi
