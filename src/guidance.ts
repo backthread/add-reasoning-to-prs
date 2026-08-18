@@ -27,6 +27,11 @@ const PACKAGE_URL = 'https://github.com/backthread/add-reasoning-to-prs';
 interface SurfaceCopy {
   moment: string;
   where: string;
+  /**
+   * A trap this denial can walk the model into, if re-running is not as simple as it
+   * sounds. Empty for surfaces that have none. See `rerunTrap` below for the PR case.
+   */
+  rerunTrap: string;
 }
 
 function surfaceCopy(surface: Surface): SurfaceCopy {
@@ -34,10 +39,27 @@ function surfaceCopy(surface: Surface): SurfaceCopy {
     ? {
         moment: 'this pull request is opened',
         where: 'the pull request description (the --body / --body-file text)',
+        // WHY THIS WARNING EXISTS. This denial blocks the WHOLE tool call. If that call
+        // both wrote the body file and ran `gh pr create` — a heredoc chained to the
+        // command, which is a common shape — then the file was never written. The obvious
+        // repair ("add the block and re-run") then appends with `>>` to a file that does
+        // not exist, creating one that holds ONLY the block. `gh pr create` succeeds, and
+        // the pull request opens with the reasoning block as its entire description.
+        // Nothing reports an error at any step.
+        //
+        // Measured on two real pull requests before this warning existed: both shipped
+        // with a single character outside the markers. The block is meant to be an
+        // ADDITION to the description, never a replacement, so a denial that silently
+        // produces the replacement defeats the tool.
+        rerunTrap:
+          '\n\n⚠ Before you re-run: this denial blocked the ENTIRE command. If that same command also wrote the body file (for example a heredoc and `gh pr create` in one shell call), the file was never written. Appending the block with `>>` will then create a file that holds ONLY the block, and the pull request will open with the block as its whole description — with no error anywhere.\nWrite the body file in a SEPARATE command from `gh pr create`, and check the file is the size you expect before creating. The block is an addition to the description, never a replacement for it.',
       }
     : {
         moment: 'this commit lands on the default branch',
         where: 'the commit message body',
+        // No equivalent trap: a commit message is re-authored on the retry, so a blocked
+        // call cannot leave a half-written artifact behind.
+        rerunTrap: '',
       };
 }
 
@@ -162,7 +184,7 @@ Self-check BEFORE you write — a quick grounded pass, no tools or network neede
 - Take each candidate line and name the specific point in THIS session where that decision, assumption, trade-off, or limitation actually came up. If you can't point to one, delete the line.
 - If nothing survives, there is no block to add: re-run your original command unchanged, or add ${SKIP_TOKEN} to it to opt out explicitly. Never manufacture filler — an empty block is the correct outcome for a session that didn't deliberate.
 
-Otherwise, re-run your original command with the surviving block included in ${c.where}.`;
+Otherwise, re-run your original command with the surviving block included in ${c.where}.${c.rerunTrap}`;
 }
 
 /**
