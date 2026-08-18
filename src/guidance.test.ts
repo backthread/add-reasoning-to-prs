@@ -83,3 +83,24 @@ test('commit-surface attribution is plain text (no markdown heading, HTML, or li
   assert.doesNotMatch(commit, /## Reasoning/); // a commit message doesn't render markdown
   assert.doesNotMatch(commit, /<sub>/);
 });
+
+// The block is an ADDITION to the description, never a replacement. The denial blocks the
+// whole tool call, so a call that both wrote the body file and ran `gh pr create` leaves no
+// file behind — and the natural repair (`>>` the block, re-run) then creates a file holding
+// only the block. Two real pull requests shipped that way before this warning existed, with
+// a single character outside the markers and no error at any step.
+test('PR guidance warns that re-running can lose a body written in the same command', () => {
+  const pr = buildGuidance('pr');
+  assert.match(pr, /blocked the ENTIRE command/i);
+  assert.match(pr, /SEPARATE command/i);
+  assert.match(pr, /addition to the description, never a replacement/i);
+});
+
+// Not a blanket warning: a commit message is re-authored on the retry, so there is no
+// half-written artifact to lose. Asserting its ABSENCE is what keeps the PR-only warning
+// from quietly becoming boilerplate on every surface.
+test('commit guidance carries no body-file warning, because it has no such trap', () => {
+  const commit = buildGuidance('commit');
+  assert.doesNotMatch(commit, /blocked the ENTIRE command/i);
+  assert.doesNotMatch(commit, /--body-file/i);
+});
