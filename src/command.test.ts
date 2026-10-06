@@ -44,3 +44,20 @@ test('handles empty / junk input safely', () => {
   // @ts-expect-error — defensive: non-string input must not throw.
   assert.equal(classifyCommand(undefined), 'other');
 });
+
+test('gh pr create wins over git commit in one chained command', () => {
+  // Seen in the wild: one Bash call that commits, pushes and opens the PR. Stopping at the
+  // first match classified it as a commit, and the PR opened without a block.
+  const chained = [
+    "git add a b && git commit -q -F - <<'EOF'",
+    'fix: something',
+    'EOF',
+    "git push -q -u origin feature && gh pr create --title \"fix\" --body-file - <<'EOF'",
+    'body',
+    'EOF',
+  ].join('\n');
+  assert.equal(classifyCommand(chained), 'gh-pr-create');
+  assert.equal(classifyCommand('git commit -m x && gh pr create'), 'gh-pr-create');
+  assert.equal(classifyCommand('gh pr create && git commit -m x'), 'gh-pr-create');
+  assert.equal(classifyCommand('git commit -m x && git push'), 'git-commit');
+});
