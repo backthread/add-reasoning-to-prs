@@ -27,14 +27,21 @@ const GIT_GLOBAL_OPTS_WITH_VALUE = new Set([
   '--exec-path',
 ]);
 
-/** Classify a full command line by its first recognizable git/gh invocation. */
+/**
+ * Classify a full command line. `gh pr create` wins over `git commit` when one command
+ * does both (`git commit … && git push && gh pr create …`): the PR description is the
+ * surface the block must land on, and stopping at the commit would let the PR open
+ * without one (the commit path only nudges on a feature branch).
+ */
 export function classifyCommand(command: string): CommandKind {
   if (typeof command !== 'string' || command.trim().length === 0) return 'other';
+  let found: CommandKind = 'other';
   for (const segment of command.split(SEGMENT_SPLIT)) {
     const kind = classifySegment(segment);
-    if (kind !== 'other') return kind;
+    if (kind === 'gh-pr-create') return kind;
+    if (kind !== 'other') found = kind;
   }
-  return 'other';
+  return found;
 }
 
 function classifySegment(segment: string): CommandKind {

@@ -30,11 +30,13 @@ var GIT_GLOBAL_OPTS_WITH_VALUE = /* @__PURE__ */ new Set([
 ]);
 function classifyCommand(command) {
   if (typeof command !== "string" || command.trim().length === 0) return "other";
+  let found = "other";
   for (const segment of command.split(SEGMENT_SPLIT)) {
     const kind = classifySegment(segment);
-    if (kind !== "other") return kind;
+    if (kind === "gh-pr-create") return kind;
+    if (kind !== "other") found = kind;
   }
-  return "other";
+  return found;
 }
 function classifySegment(segment) {
   const tokens = segment.trim().split(/\s+/).filter(Boolean);
